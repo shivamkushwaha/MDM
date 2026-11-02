@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Live Graph Optimization Studio</title>
+<style>
+:root{--bg:#f3f6fb;--card:#fff;--ink:#17243a;--muted:#66758d;--line:#d9e1ec;--blue:#2563eb;--green:#0b9b70;--orange:#d97706;--red:#c24141}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Arial,sans-serif}
+header{background:#142c50;color:white;padding:20px max(18px,calc((100% - 1400px)/2))}h1{font-size:clamp(22px,3vw,30px);margin:0}header p{color:#d6e4f7;margin:5px 0 0}
+main{max-width:1400px;margin:18px auto;padding:0 16px 32px}.bar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px}
+.tabs,.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.tabs{background:#e6ecf4;padding:5px;border-radius:11px}.tabs button{border:0;background:transparent;padding:9px 13px;border-radius:8px;font-weight:700;color:#52627b}.tabs button.active{background:white;color:var(--blue);box-shadow:0 2px 8px #102b5015}
+button,select,input{font:inherit}button{cursor:pointer}.btn{border:1px solid var(--line);background:white;border-radius:8px;padding:8px 11px;font-weight:650;color:var(--ink)}.btn.primary{background:var(--blue);border-color:var(--blue);color:white}.btn.danger{color:var(--red)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px;box-shadow:0 5px 20px #203b6010;margin-bottom:13px}
+h2{font-size:17px;margin:0 0 10px}h3{font-size:14px;margin:12px 0 7px}.muted,.help{color:var(--muted);font-size:12px}
+.workspace{background:#fbfdff;border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative}
+svg{width:100%;height:auto;display:block;touch-action:none;user-select:none}.edge{stroke:#9eacbf;stroke-width:3;fill:none}.edge.selected{stroke:var(--orange);stroke-width:5}.edge.result{stroke:var(--green);stroke-width:5}.edge.reject{stroke:#cbd5e1;stroke-dasharray:6 5}.node circle{fill:white;stroke:#52657f;stroke-width:2.5}.node.selected circle{fill:#fff0d8;stroke:var(--orange);stroke-width:3.5}.node text{font-weight:750;font-size:14px;fill:#1f2e45;pointer-events:none}.edge-label{font-size:12px;fill:#24364f;paint-order:stroke;stroke:white;stroke-width:4px;stroke-linejoin:round;pointer-events:none}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.stat{background:#f5f8fc;border:1px solid var(--line);border-radius:9px;padding:10px}.stat strong{display:block;font-size:21px;color:#164b91}.stat span{font-size:11px;color:var(--muted)}
+label{display:block;font-weight:650;font-size:12px;margin:9px 0 4px}input[type=range]{width:100%;accent-color:var(--blue)}input[type=number],select{width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;background:white;color:var(--ink)}.field{display:grid;grid-template-columns:1fr 72px;gap:8px;align-items:center}.field output{font-variant-numeric:tabular-nums;text-align:right;font-weight:700}
+.edgeitem{border:1px solid var(--line);border-radius:9px;padding:9px;margin:7px 0;cursor:pointer}.edgeitem.active{border-color:var(--orange);background:#fffaf1}.edgeitem strong{font-size:13px}.edgeitem .muted{display:block}
+select{max-width:100%}.resultbox{background:#eff8f4;border:1px solid #c8eadb;padding:10px;border-radius:9px;min-height:54px}.warn{background:#fff7e8;border:1px solid #f4d8a6;padding:9px;border-radius:8px;color:#87520b;font-size:12px}.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}
+hr{border:0;border-top:1px solid var(--line);margin:12px 0}.inline{display:flex;align-items:center;gap:8px}.inline input{width:auto}.pill{background:#eef3fa;border-radius:999px;padding:5px 9px;font-size:11px;color:#52627b}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}}@media(max-width:480px){.stats{grid-template-columns:1fr 1fr}.card{padding:11px}}
+</style></head>
+<body>
+<header><h1>Live Graph Optimization Studio</h1><p>Move vertices, adjust edge parameters, and see shortest paths, maximum flow and minimum spanning trees update immediately.</p></header>
+<main>
+ <div class="bar">
+  <div class="tabs" id="modes"><button class="active" data-mode="dijkstra">Shortest path</button><button data-mode="flow">Maximum flow</button><button data-mode="mst">Minimum spanning tree</button></div>
+  <div class="row"><button class="btn" id="reset">Reset sample graph</button><button class="btn" id="addNode">＋ Add node</button><button class="btn" id="connect">Connect nodes</button></div>
+ </div>
+ <div class="layout">
+  <section class="card">
+   <div class="bar"><div><h2 style="margin:0">Graph workspace</h2><div class="help">Drag nodes to reposition them. Select an edge to edit its parameters. Changes recalculate automatically.</div></div><span class="pill" id="liveStatus">LIVE · recalculating</span></div>
+   <div class="workspace"><svg id="graph" viewBox="0 0 900 560" aria-label="Interactive graph"></svg></div>
+   <div class="legend"><span><i class="dot" style="background:#9eacbf"></i>Ordinary edge</span><span><i class="dot" style="background:#0b9b70"></i>Part of current solution</span><span><i class="dot" style="background:#d97706"></i>Selected edge/node</span></div>
+   <div class="stats" id="stats"></div>
+   <div class="resultbox" id="result" style="margin-top:10px">Calculating…</div>
+  </section>
+  <aside>
+   <div class="card">
+    <h2>Algorithm settings</h2>
+    <div id="dijkstraSettings">
+     <label>Starting vertex</label><select id="source"></select><label>Destination vertex</label><select id="target"></select>
+     <div class="help">Dijkstra uses the edge cost/length. Edge costs must be non-negative.</div>
+    </div>
+    <div id="flowSettings" class="hidden">
+     <label>Source vertex</label><select id="flowSource"></select><label>Sink vertex</label><select id="flowSink"></select>
+     <div class="help">Directed edges are used. Lower bounds are enforced using a feasible-circulation transformation.</div>
+    </div>
+    <div id="mstSettings" class="hidden">
+     <div class="help">Kruskal treats each connection as undirected and uses its cost as the edge weight.</div>
+    </div>
+   </div>
+   <div class="card">
+    <h2>Selected edge</h2>
+    <div id="noEdge" class="help">Select an edge in the graph or edge list to edit it.</div>
+    <div id="edgeEditor" class="hidden">
+     <div id="edgeName" style="font-weight:750"></div>
+     <label>Cost / distance</label><div class="field"><input id="costRange" type="range" min="1" max="300" value="10"><output id="costOut">10</output></div>
+     <div class="inline"><input id="autoCost" type="checkbox" checked><label for="autoCost" style="margin:0">Use geometric distance as cost</label></div>
+     <div class="help">When enabled, moving either endpoint changes this edge's cost automatically.</div>
+     <hr>
+     <label>Maximum capacity</label><div class="field"><input id="capRange" type="range" min="0" max="100" value="20"><output id="capOut">20</output></div>
+     <label>Minimum / lower capacity</label><div class="field"><input id="lowRange" type="range" min="0" max="100" value="0"><output id="lowOut">0</output></div>
+     <div class="help">Flow on this edge must be between its lower and upper capacity. Lower capacity cannot exceed maximum capacity.</div>
+     <div class="row" style="margin-top:10px"><button class="btn danger" id="deleteEdge">Delete edge</button></div>
+    </div>
+   </div>
+   <div class="card">
+    <h2>Connections</h2><div class="help">Select an edge to edit. Costs and capacities are independent.</div><div id="edgeList"></div>
+   </div>
+   <div class="card">
+    <h2>How to interact</h2>
+    <ol class="help" style="padding-left:18px;margin-bottom:0"><li>Drag a node; linked geometric costs update.</li><li>Select an edge and adjust its sliders.</li><li>Switch algorithm tabs; the result is recomputed.</li><li>Use Connect nodes, then click two vertices to add an edge.</li><li>Use Add node to expand the network.</li></ol>
+   </div>
+ </aside>
+ </div>
+</main>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+let nodes=[],edges=[],mode="dijkstra",selectedEdge=null,selectedNode=null,drag=null,connectMode=false,connectFirst=null;
+const defaults=()=>({
+ nodes:[["A",140,130],["B",390,90],["C",300,290],["D",610,170],["E",510,410],["F",790,300]],
+ edges:[["A","B",4,16,0],["A","C",2,13,0],["B","C",1,12,0],["B","D",5,20,0],["C","D",8,14,0],["C","E",10,10,0],["D","E",2,7,0],["D","F",6,15,0],["E","F",3,12,0]]
+});
+function init(){const d=defaults();nodes=d.nodes.map(([id,x,y])=>({id,x,y}));edges=d.edges.map(([u,v,c,cap,low],i)=>({id:i+1,u,v,cost:c,capacity:cap,lower:low,auto:true}));selectedEdge=null;selectedNode=null;connectMode=false;render();}
+function node(id){return nodes.find(n=>n.id===id)}
+function distance(a,b){return Math.max(1,Math.round(Math.hypot(node(a).x-node(b).x,node(a).y-node(b).y)/25))}
+function syncAutoCosts(){edges.forEach(e=>{if(e.auto)e.cost=distance(e.u,e.v);});}
+function fmt(n){return Number.isFinite(n)?(Math.round(n*100)/100).toString():"∞"}
+function render(){syncAutoCosts();renderGraph();renderControls();compute();}
+function renderGraph(){
+ const svg=$("graph");let s="";
+ edges.forEach(e=>{const a=node(e.u),b=node(e.v);if(!a||!b)return;const dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy)||1,ox=-dy/L*9,oy=dx/L*9;let cls="edge";if(solutionEdges.has(e.id))cls+=" result";if(selectedEdge===e.id)cls+=" selected";
+ s+=`<g data-edge="${e.id}"><line class="${cls}" x1="${a.x+ox}" y1="${a.y+oy}" x2="${b.x+ox}" y2="${b.y+oy}"/><text class="edge-label" x="${(a.x+b.x)/2+ox}" y="${(a.y+b.y)/2+oy-8}" text-anchor="middle">${fmt(e.cost)} · ${e.lower}-${e.capacity}</text></g>`;});
+ nodes.forEach(n=>{s+=`<g class="node ${selectedNode===n.id?"selected":""}" data-node="${n.id}"><circle cx="${n.x}" cy="${n.y}" r="22"/><text x="${n.x}" y="${n.y+5}" text-anchor="middle">${n.id}</text></g>`;});
+ svg.innerHTML=s;
+ svg.querySelectorAll("[data-node]").forEach(el=>{el.addEventListener("pointerdown",e=>startDrag(e,el.dataset.node));el.addEventListener("click",e=>{e.stopPropagation();if(connectMode){chooseConnect(el.dataset.node);}else{selectedNode=el.dataset.node;renderGraph();}});});
+ svg.querySelectorAll("[data-edge]").forEach(el=>el.addEventListener("click",e=>{e.stopPropagation();selectedEdge=Number(el.dataset.edge);selectedNode=null;render();}));
+}
+let solutionEdges=new Set();
+function renderControls(){
+ const ids=nodes.map(n=>n.id);["source","target","flowSource","flowSink"].forEach(id=>{const el=$(id),old=el.value;el.innerHTML=ids.map(x=>`<option value="${x}">${x}</option>`).join("");if(ids.includes(old))el.value=old;});
+ if(ids.length>1){if($("source").value===$("target").value)$("target").selectedIndex=1;if($("flowSource").value===$("flowSink").value)$("flowSink").selectedIndex=1;}
+ $("dijkstraSettings").classList.toggle("hidden",mode!=="dijkstra");$("flowSettings").classList.toggle("hidden",mode!=="flow");$("mstSettings").classList.toggle("hidden",mode!=="mst");
+ const e=edges.find(x=>x.id===selectedEdge);$("edgeEditor").classList.toggle("hidden",!e);$("noEdge").classList.toggle("hidden",!!e);
+ if(e){$("edgeName").textContent=e.u+" — "+e.v;$("costRange").value=Math.min(300,e.cost);$("costOut").value=fmt(e.cost);$("autoCost").checked=e.auto;$("costRange").disabled=e.auto;$("capRange").value=e.capacity;$("capOut").value=e.capacity;$("lowRange").max=e.capacity;$("lowRange").value=e.lower;$("lowOut").value=e.lower;}
+ $("edgeList").innerHTML=edges.map(e=>`<div class="edgeitem ${e.id===selectedEdge?"active":""}" data-pick="${e.id}"><strong>${e.u} — ${e.v}</strong><span class="muted">cost ${fmt(e.cost)} · capacity ${e.lower}–${e.capacity}${e.auto?" · auto distance":""}</span></div>`).join("")||'<p class="help">No edges yet.</p>';
+ $("edgeList").querySelectorAll("[data-pick]").forEach(el=>el.onclick=()=>{selectedEdge=Number(el.dataset.pick);render();});
+}
+function startDrag(ev,id){if(connectMode)return;ev.preventDefault();selectedNode=id;drag={id,pointer:ev.pointerId};$("graph").setPointerCapture(ev.pointerId);}
+$("graph").addEventListener("pointermove",ev=>{if(!drag)return;const rect=$("graph").getBoundingClientRect(),x=(ev.clientX-rect.left)/rect.width*900,y=(ev.clientY-rect.top)/rect.height*560;const n=node(drag.id);n.x=Math.max(30,Math.min(870,x));n.y=Math.max(30,Math.min(530,y));render();});
+$("graph").addEventListener("pointerup",()=>{drag=null;});
+$("graph").addEventListener("pointercancel",()=>{drag=null;});
+function chooseConnect(id){if(!connectFirst){connectFirst=id;$("result").textContent="Now click the second endpoint.";return;}if(connectFirst===id){connectFirst=null;return;}if(edges.some(e=>(e.u===connectFirst&&e.v===id)||(e.u===id&&e.v===connectFirst))){$("result").textContent="Those vertices are already connected.";connectFirst=null;return;}const e={id:Math.max(0,...edges.map(e=>e.id))+1,u:connectFirst,v:id,cost:distance(connectFirst,id),capacity:10,lower:0,auto:true};edges.push(e);selectedEdge=e.id;connectMode=false;connectFirst=null;$("connect").textContent="Connect nodes";render();}
+$("connect").onclick=()=>{connectMode=!connectMode;connectFirst=null;$("connect").textContent=connectMode?"Click first node…":"Connect nodes";$("result").textContent=connectMode?"Click two vertices in the graph to connect them.":"Connection mode cancelled.";};
+$("addNode").onclick=()=>{let i=1,id;do{id="N"+i++;}while(node(id));nodes.push({id,x:120+(nodes.length*83)%650,y:70+(nodes.length*67)%400});render();};
+$("deleteEdge").onclick=()=>{edges=edges.filter(e=>e.id!==selectedEdge);selectedEdge=null;render();};
+$("costRange").oninput=e=>{const x=edges.find(x=>x.id===selectedEdge);if(x){x.cost=+e.target.value;$("costOut").value=x.cost;compute();renderGraph();renderEdgeListOnly();}};
+$("autoCost").onchange=e=>{const x=edges.find(x=>x.id===selectedEdge);if(x){x.auto=e.target.checked;if(x.auto)x.cost=distance(x.u,x.v);render();}};
+$("capRange").oninput=e=>{const x=edges.find(x=>x.id===selectedEdge);if(x){x.capacity=+e.target.value;if(x.lower>x.capacity)x.lower=x.capacity;$("capOut").value=x.capacity;$("lowRange").max=x.capacity;$("lowRange").value=x.lower;$("lowOut").value=x.lower;compute();renderGraph();renderEdgeListOnly();}};
+$("lowRange").oninput=e=>{const x=edges.find(x=>x.id===selectedEdge);if(x){x.lower=Math.min(+e.target.value,x.capacity);$("lowOut").value=x.lower;compute();renderGraph();renderEdgeListOnly();}};
+function renderEdgeListOnly(){$("edgeList").innerHTML=edges.map(e=>`<div class="edgeitem ${e.id===selectedEdge?"active":""}" data-pick="${e.id}"><strong>${e.u} — ${e.v}</strong><span class="muted">cost ${fmt(e.cost)} · capacity ${e.lower}–${e.capacity}${e.auto?" · auto distance":""}</span></div>`).join("");$("edgeList").querySelectorAll("[data-pick]").forEach(el=>el.onclick=()=>{selectedEdge=+el.dataset.pick;render();});}
+function residualMaxFlow(es,s,t){
+ // Standard lower-bound circulation reduction with explicit residual edge pairs.
+ const vs=nodes.map(n=>n.id),N=vs.length,idx=Object.fromEntries(vs.map((v,i)=>[v,i])),SS=N,TT=N+1;
+ const adj=Array.from({length:N+2},()=>[]),balance=Array(N).fill(0),superEdges=[];
+ function add(u,v,c){const a={to:v,cap:c,rev:null},b={to:u,cap:0,rev:a};a.rev=b;adj[u].push(a);adj[v].push(b);return a;}
+ es.forEach(e=>{if(e.lower>e.capacity)throw Error("Lower capacity exceeds upper capacity on "+e.u+"→"+e.v);const u=idx[e.u],v=idx[e.v];add(u,v,e.capacity-e.lower);balance[u]-=e.lower;balance[v]+=e.lower;});
+ const artificial=add(idx[t],idx[s],1e9);
+ let required=0;
+ balance.forEach((b,i)=>{if(b>0){superEdges.push(add(SS,i,b));required+=b;}else if(b<0)superEdges.push(add(i,TT,-b));});
+ function maxflow(source,sink){let total=0;while(true){const parent=Array(N+2).fill(null),q=[source];parent[source]={};for(let k=0;k<q.length&&parent[sink]===null;k++){const u=q[k];for(const e of adj[u])if(e.cap>1e-9&&parent[e.to]===null){parent[e.to]={u,e};q.push(e.to);}}if(parent[sink]===null)break;let amount=Infinity,v=sink;while(v!==source){const z=parent[v];amount=Math.min(amount,z.e.cap);v=z.u;}v=sink;while(v!==source){const z=parent[v];z.e.cap-=amount;z.e.rev.cap+=amount;v=z.u;}total+=amount;}return total;}
+ const feasible=maxflow(SS,TT);if(feasible+1e-8<required)return {feasible:false};
+ const initial=artificial.rev.cap;
+ // Remove the artificial t→s edge and all super-source/super-sink arcs.
+ artificial.cap=0;artificial.rev.cap=0;superEdges.forEach(e=>{e.cap=0;e.rev.cap=0;});
+ const extra=maxflow(idx[s],idx[t]);
+ return {feasible:true,value:initial+extra};
+}
+function solveFlow(){const s=$("flowSource").value,t=$("flowSink").value;if(s===t)throw Error("Choose different source and sink.");const r=residualMaxFlow(edges,s,t);if(!r.feasible)return {error:"No feasible flow satisfies all lower-capacity requirements."};return {value:r.value,detail:`Maximum feasible flow from ${s} to ${t}: ${fmt(r.value)} units. Lower bounds are enforced.`};}
+function solveDijkstra(){const s=$("source").value,t=$("target").value,dist={},prev={},done=new Set(),adj={};nodes.forEach(n=>{dist[n.id]=Infinity;adj[n.id]=[];});edges.forEach(e=>{adj[e.u].push([e.v,e.cost]);adj[e.v].push([e.u,e.cost]);});dist[s]=0;while(true){let u=null;nodes.forEach(n=>{const id=n.id;if(!done.has(id)&&(u===null||dist[id]<dist[u]))u=id;});if(u===null||dist[u]===Infinity)break;done.add(u);if(u===t)break;adj[u].forEach(([v,w])=>{if(dist[u]+w<dist[v]){dist[v]=dist[u]+w;prev[v]=u;}});}let path=[];if(Number.isFinite(dist[t])){let x=t;while(x!==undefined){path.unshift(x);if(x===s)break;x=prev[x];}}return {value:dist[t],path,detail:Number.isFinite(dist[t])?`Shortest route ${path.join(" → ")} has total cost ${fmt(dist[t])}.`:`${t} is unreachable from ${s}.`};}
+function solveMST(){const p={};nodes.forEach(n=>p[n.id]=n.id);const f=x=>p[x]===x?x:(p[x]=f(p[x]));const sorted=[...edges].sort((a,b)=>a.cost-b.cost);let total=0,chosen=[];sorted.forEach(e=>{let a=f(e.u),b=f(e.v);if(a!==b){p[a]=b;chosen.push(e);total+=e.cost;}});if(chosen.length!==nodes.length-1)return {value:total,chosen,detail:`The graph is disconnected. Minimum spanning forest weight = ${fmt(total)} (${chosen.length} selected edges).`};return {value:total,chosen,detail:`Minimum spanning tree weight = ${fmt(total)}. Selected edges: ${chosen.map(e=>e.u+"–"+e.v).join(", ")}.`};}
+function compute(){try{let r;if(mode==="flow")r=solveFlow();else if(mode==="dijkstra")r=solveDijkstra();else r=solveMST();solutionEdges=new Set();if(mode==="mst")r.chosen.forEach(e=>solutionEdges.add(e.id));else if(mode==="dijkstra"&&r.path)for(let i=0;i<r.path.length-1;i++){const e=edges.find(e=>(e.u===r.path[i]&&e.v===r.path[i+1])||(e.v===r.path[i]&&e.u===r.path[i+1]));if(e)solutionEdges.add(e.id);}
+ $("result").textContent=r.error||r.detail;$("stats").innerHTML=mode==="flow"?`<div class="stat"><strong>${r.error?"—":fmt(r.value)}</strong><span>Maximum flow</span></div><div class="stat"><strong>${edges.length}</strong><span>Directed edges</span></div><div class="stat"><strong>${edges.reduce((a,e)=>a+e.lower,0)}</strong><span>Sum of lower bounds</span></div>`:mode==="dijkstra"?`<div class="stat"><strong>${fmt(r.value)}</strong><span>Shortest cost</span></div><div class="stat"><strong>${r.path?.length||0}</strong><span>Vertices in path</span></div><div class="stat"><strong>${edges.length}</strong><span>Connections</span></div>`:`<div class="stat"><strong>${fmt(r.value)}</strong><span>Tree / forest weight</span></div><div class="stat"><strong>${r.chosen.length}</strong><span>Edges selected</span></div><div class="stat"><strong>${nodes.length}</strong><span>Vertices</span></div>`;
+ $("liveStatus").textContent="LIVE · updated";renderGraph();renderEdgeListOnly();
+ }catch(e){solutionEdges.clear();$("result").textContent="Cannot calculate: "+e.message;$("stats").innerHTML="";renderGraph();}}
+$("modes").addEventListener("click",e=>{const b=e.target.closest("[data-mode]");if(!b)return;mode=b.dataset.mode;document.querySelectorAll("#modes button").forEach(x=>x.classList.toggle("active",x===b));renderControls();compute();});
+["source","target","flowSource","flowSink"].forEach(id=>$(id).onchange=compute);
+$("reset").onclick=init;
+init();
+</script></body></html>
