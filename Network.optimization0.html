@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Live OR Matrix Optimization Lab</title>
+<style>
+:root{--bg:#f3f6fb;--card:#fff;--ink:#18263c;--muted:#68778e;--line:#dbe3ee;--blue:#2563eb;--green:#0b9870;--red:#a8323b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Arial}header{background:#142c50;color:white;padding:22px max(18px,calc((100% - 1320px)/2))}h1{font-size:clamp(22px,3vw,30px);margin:0}header p{color:#d8e5f7;margin:5px 0 0}main{max-width:1320px;margin:20px auto;padding:0 16px 35px}.top,.row{display:flex;gap:9px;align-items:center;justify-content:space-between;flex-wrap:wrap}.tabs{display:flex;gap:5px;background:#e6ecf4;padding:5px;border-radius:11px;flex-wrap:wrap}.tabs button{border:0;background:transparent;padding:10px 14px;border-radius:8px;color:#53627a;font-weight:700}.tabs button.active{background:white;color:var(--blue);box-shadow:0 2px 8px #1234}.layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:14px;align-items:start}.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:15px;box-shadow:0 5px 20px #203b6010;margin:13px 0}h2{font-size:17px;margin:0 0 10px}h3{font-size:14px;margin:14px 0 7px}.help,.muted{font-size:12px;color:var(--muted)}button,input{font:inherit}button{cursor:pointer}.btn{border:1px solid var(--line);background:white;border-radius:8px;padding:8px 11px;font-weight:650;color:var(--ink)}.btn.primary{background:var(--blue);border-color:var(--blue);color:white}label{display:block;font-size:12px;font-weight:700;margin:8px 0 4px}input[type=number]{border:1px solid #cbd5e1;border-radius:7px;padding:7px 5px;width:100%;min-width:0;text-align:center}.sizes{display:flex;gap:9px;align-items:end;flex-wrap:wrap}.sizes>div{width:130px}.matrix-wrap{overflow:auto}table{border-collapse:separate;border-spacing:4px;font-size:12px}th{font-size:11px;color:#52627b;padding:4px 7px;white-space:nowrap}td{padding:1px}.cell{width:72px}.balance{width:78px}.balance-item{border:1px solid var(--line);border-radius:8px;padding:7px;min-width:100px;flex:1}.balance-row{display:flex;gap:7px;flex-wrap:wrap}.note{background:#f0f5ff;border-left:3px solid var(--blue);padding:9px 11px;border-radius:7px;font-size:12px;color:#465875;margin:10px 0}.result{background:#eef8f3;border:1px solid #c9e9d9;border-radius:10px;padding:12px;min-height:62px}.error{background:#fff2f2;border:1px solid #f1caca;color:#9b3036;border-radius:9px;padding:10px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.stat{background:#f5f8fc;border:1px solid var(--line);border-radius:9px;padding:10px}.stat strong{display:block;font-size:21px;color:#174b91}.stat span{font-size:11px;color:var(--muted)}.alloc td{min-width:70px;text-align:center;background:#f6f8fb;border:1px solid var(--line);border-radius:7px;padding:9px}.alloc td.used{background:#e0f5eb;border-color:#a9dfc7;font-weight:750}.network-box{border:1px solid var(--line);border-radius:10px;background:#fbfdff;overflow:auto;margin:10px 0}.network-box svg{display:block;width:100%;min-width:560px;height:auto}.status{font-size:11px;color:var(--green);background:#e7f7ef;border-radius:999px;padding:5px 9px;font-weight:700}.hidden{display:none!important}footer{text-align:center;color:var(--muted);font-size:11px;padding:15px}@media(max-width:850px){.layout{grid-template-columns:1fr}}@media(max-width:520px){.stats{grid-template-columns:1fr 1fr}.card{padding:11px}}
+.decision-list{margin-top:18px}.decision-list h3{font-size:15px;margin:0 0 8px;color:#18263c}.decision-list td,.decision-list th{padding:9px 12px}
+.alloc td.zero{color:#a3afc0;font-weight:400}
+.alloc td.total{background:#eef3fa;border-color:#cfdaea;font-weight:750;color:#174b91}
+.bal-line{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:13px}
+.pill{border-radius:999px;padding:4px 11px;font-weight:700;font-size:12px}
+.pill.ok{background:#e7f7ef;color:#0b7a57}.pill.bad{background:#fff2f2;color:#9b3036}
+input:disabled{background:#eef1f5;border-color:#e2e8f0}
+.viz-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 4px}.viz-head h3{margin:0}
+label.inline{display:inline-flex;gap:6px;align-items:center;margin:0;font-weight:600;color:#53627a;cursor:pointer}
+label.inline input{width:auto}
+</style></head><body>
+<header><h1>Live Operations Research: Matrix Optimization Lab</h1><p>Transportation · Transshipment · Assignment. Edit costs and constraints and watch the optimal decisions update.</p></header>
+<main><div class="top"><nav class="tabs" id="tabs"><button class="active" data-mode="transport">Transportation</button><button data-mode="transship">Transshipment</button><button data-mode="assign">Assignment</button></nav><div class="row"><span class="status">LIVE CALCULATION</span><button class="btn" id="restore">Restore sample</button></div></div>
+<div class="layout"><section>
+<div class="card"><div class="row"><h2 id="editorTitle">Transportation data</h2><span class="help">Edit any cell to recalculate</span></div>
+<div id="transportEditor"><div class="sizes"><div><label>Sources</label><input id="trRows" type="number" min="1" max="8" value="3"></div><div><label>Destinations</label><input id="trCols" type="number" min="1" max="8" value="4"></div><button class="btn" id="resizeTr">Resize matrix</button></div><h3>Unit transportation costs</h3><div class="matrix-wrap" id="costMatrix"></div><div class="row" style="margin-top:10px;align-items:flex-start"><div style="flex:1"><h3>Supply</h3><div id="supplyInputs" class="balance-row"></div></div><div style="flex:1"><h3>Demand</h3><div id="demandInputs" class="balance-row"></div></div></div><div id="trBalance" class="bal-line"></div><div class="note">A balanced model is required. If total supply and total demand differ, use the button above to add a zero cost dummy source or destination.</div></div>
+<div id="transshipEditor" class="hidden"><div class="sizes"><div><label>Number of nodes</label><input id="tsN" type="number" min="2" max="8" value="4"></div><button class="btn" id="resizeTs">Resize network</button></div><h3>Node balances</h3><div class="help">Positive = supply; negative = demand; zero = transshipment node.</div><div id="nodeBalances" class="balance-row"></div><h3>Directed arc costs</h3><div class="help">Enter a nonnegative cost to create an arc. Blank = no arc.</div><div class="matrix-wrap" id="tsCostMatrix"></div><h3>Arc capacities</h3><div class="help">Blank = no limit.</div><div class="matrix-wrap" id="tsCapMatrix"></div><div class="note">Rows are origin nodes and columns are destination nodes. Arcs are directed.</div></div>
+<div id="assignEditor" class="hidden"><div class="sizes"><div><label>Agents (rows)</label><input id="asRows" type="number" min="1" max="8" value="4"></div><div><label>Tasks (columns)</label><input id="asCols" type="number" min="1" max="8" value="4"></div><button class="btn" id="resizeAs">Resize matrix</button></div><h3>Assignment cost matrix</h3><div class="matrix-wrap" id="assignMatrix"></div><div class="note">Square matrices assign every agent to one task. Rectangular matrices match every member of the smaller side; unmatched items are listed.</div></div></div>
+<div class="card"><div class="row"><h2 style="margin:0">Optimization result</h2><div class="row" style="gap:10px"><span class="help" id="calcState">Waiting for input</span><button class="btn primary" id="solveBtn" type="button">Solve / Calculate</button></div></div><div id="result" class="result" style="margin-top:10px">Edit the model to calculate an optimal solution.</div><div id="stats" class="stats"></div>
+<div class="viz-head"><h3>Network diagram</h3><label class="inline"><input type="checkbox" id="showUnused" checked> Show costs on unused routes</label></div>
+<div class="help">Red routes carry a positive amount in the optimal solution; gray routes are unused. Red labels show unit cost and the optimal quantity; gray labels show unit cost only.</div><div id="networkViz" class="network-box"><div class="help" style="padding:18px">The optimized network will appear here.</div></div><h3 id="solutionTitle">Optimal allocation</h3><div id="solution"></div></div>
+</section><aside>
+<div class="card"><h2>Model notes</h2><div id="modelNote" class="help">All supply is shipped and all demand is satisfied. Costs are minimized globally.</div></div>
+<div class="card"><h2>What is calculated?</h2><ul class="help" style="padding-left:18px"><li>Transportation: exact minimum cost feasible shipment plan.</li><li>Transshipment: minimum cost flow satisfying node balances and arc capacities.</li><li>Assignment: minimum cost one to one matching.</li></ul><p class="help">The engine computes the optimal result directly. It does not animate VAM, MODI or Hungarian textbook steps in this version. When a problem has more than one optimal solution, the allocation shown may differ from a hand solution with the same total cost.</p></div>
+<div class="card"><h2>Classroom use</h2><ol class="help" style="padding-left:18px"><li>Change one cost or constraint.</li><li>Observe the new allocation and objective value.</li><li>Discuss why routes or assignments change.</li><li>Restore sample to start again.</li></ol></div>
+</aside></div><footer>Runs locally in your browser. Uses a successive shortest path minimum cost flow solver.</footer></main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const clone = x => JSON.parse(JSON.stringify(x));
+const sum = a => a.reduce((s, x) => s + x, 0);
+const EPS = 1e-8;
+let mode = "transport", model = {}, timer = null, lastZ = null;
+
+const samples = {
+  transport: { supply: [20, 30, 25], demand: [10, 25, 20, 20],
+               costs: [[8, 6, 10, 9], [9, 12, 13, 7], [14, 9, 16, 5]], dummyRow: null, dummyCol: null },
+  transship: { balances: [15, 0, 0, -15],
+               costs: [[null, 2, 5, null], [null, null, 1, 4], [null, 2, null, 2], [null, null, null, null]],
+               caps:  [[null, 10, 10, null], [null, null, 10, 10], [null, 10, null, 10], [null, null, null, null]] },
+  assign:    { costs: [[9, 2, 7, 8], [6, 4, 3, 7], [5, 8, 1, 8], [7, 6, 9, 4]] }
+};
+
+function esc(x) { return String(x).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function f(x) { if (!Number.isFinite(x)) return "∞"; const r = Math.round(x * 10000) / 10000; return (Object.is(r, -0) ? 0 : r).toString(); }
+
+/* Names for rows and columns. A dummy added to balance a transportation model is marked. */
+const isDummyRow = i => mode === "transport" && model.dummyRow === i;
+const isDummyCol = j => mode === "transport" && model.dummyCol === j;
+const srcName = i => "S" + (i + 1) + (isDummyRow(i) ? " (dummy)" : "");
+const dstName = j => "D" + (j + 1) + (isDummyCol(j) ? " (dummy)" : "");
+
+/* ---------- Editors ---------- */
+function matrixHTML(mat, rows, cols, key, ph = "", noDiag = false) {
+  let h = '<table><tr><th></th>' + cols.map(c => `<th>${esc(c)}</th>`).join("") + '</tr>';
+  mat.forEach((row, i) => {
+    h += `<tr><th>${esc(rows[i])}</th>` + row.map((v, j) => {
+      if (noDiag && i === j) return '<td><input class="cell" type="number" disabled title="No arc from a node to itself"></td>';
+      return `<td><input class="cell" type="number" step="any" value="${v ?? ""}" placeholder="${ph}" data-m="${key}" data-i="${i}" data-j="${j}"></td>`;
+    }).join("") + '</tr>';
+  });
+  return h + '</table>';
+}
+
+function render() {
+  if (mode === "transport") {
+    const { supply: s, demand: d, costs: c } = model;
+    $("costMatrix").innerHTML = matrixHTML(c, s.map((_, i) => srcName(i)), d.map((_, j) => dstName(j)), "tc");
+    $("supplyInputs").innerHTML = s.map((v, i) => `<div class="balance-item">${esc(srcName(i))}<input class="balance" type="number" step="any" min="0" value="${v}" data-v="supply" data-i="${i}"></div>`).join("");
+    $("demandInputs").innerHTML = d.map((v, j) => `<div class="balance-item">${esc(dstName(j))}<input class="balance" type="number" step="any" min="0" value="${v}" data-v="demand" data-i="${j}"></div>`).join("");
+  }
+  if (mode === "transship") {
+    const n = model.balances.length, L = Array.from({ length: n }, (_, i) => "N" + (i + 1));
+    $("nodeBalances").innerHTML = model.balances.map((v, i) => `<div class="balance-item">${L[i]} balance<input class="balance" type="number" step="any" value="${v}" data-v="balances" data-i="${i}"></div>`).join("");
+    $("tsCostMatrix").innerHTML = matrixHTML(model.costs, L, L, "tcost", "no arc", true);
+    $("tsCapMatrix").innerHTML = matrixHTML(model.caps, L, L, "tcap", "no limit", true);
+  }
+  if (mode === "assign") {
+    const a = model.costs;
+    $("assignMatrix").innerHTML = matrixHTML(a, a.map((_, i) => "Agent " + (i + 1)), a[0].map((_, j) => "Task " + (j + 1)), "ac");
+  }
+  document.querySelectorAll("[data-m]").forEach(el => el.oninput = () => {
+    const i = +el.dataset.i, j = +el.dataset.j, k = el.dataset.m;
+    const v = el.value.trim() === "" ? null : Number(el.value);
+    if (v !== null && !Number.isFinite(v)) return;
+    if (k === "tc" || k === "ac") model.costs[i][j] = v ?? 0;
+    if (k === "tcost") model.costs[i][j] = v;
+    if (k === "tcap") model.caps[i][j] = v;
+    schedule();
+  });
+  document.querySelectorAll("[data-v]").forEach(el => el.oninput = () => {
+    const v = Number(el.value);
+    if (Number.isFinite(v)) model[el.dataset.v][+el.dataset.i] = v;
+    schedule();
+  });
+  updateBalance();
+}
+
+/* Shows total supply vs total demand and offers a one click dummy row or column. */
+function updateBalance() {
+  const el = $("trBalance");
+  if (mode !== "transport") { el.innerHTML = ""; return; }
+  const S = sum(model.supply), D = sum(model.demand), gap = S - D;
+  let h = `<span>Total supply <b>${f(S)}</b></span><span>Total demand <b>${f(D)}</b></span>`;
+  if (Math.abs(gap) <= 1e-7) { el.innerHTML = h + '<span class="pill ok">Balanced</span>'; return; }
+  // Describe exactly what addDummy() will do: shrink an existing opposite dummy first, then add or grow one.
+  const parts = []; let g = Math.abs(gap);
+  const [oppIdx, oppVec, oppName, sameIdx, sameName, sameQty] = gap > 0
+    ? [model.dummyRow, model.supply, "dummy source", model.dummyCol, "dummy destination", "demand"]
+    : [model.dummyCol, model.demand, "dummy destination", model.dummyRow, "dummy source", "supply"];
+  if (oppIdx != null) { const r = Math.min(g, oppVec[oppIdx]); parts.push(r >= oppVec[oppIdx] - 1e-9 ? `remove the ${oppName}` : `reduce the ${oppName} by ${f(r)}`); g -= r; }
+  if (g > 1e-9) parts.push(sameIdx != null ? `raise the ${sameName} by ${f(g)}` : `add a ${sameName} with ${sameQty} ${f(g)}`);
+  const what = "Balance: " + parts.join(" and ") + " (zero cost)";
+  el.innerHTML = h + `<span class="pill bad">Unbalanced by ${f(Math.abs(gap))}</span><button class="btn primary" id="dummyBtn" type="button">${what}</button>`;
+  $("dummyBtn").onclick = addDummy;
+}
+
+function addDummy() {
+  let gap = sum(model.supply) - sum(model.demand);
+  if (Math.abs(gap) <= 1e-7) return;
+  // First shrink an existing dummy on the wrong side, then grow or create one on the right side.
+  if (gap > 0 && model.dummyRow != null) { const r = Math.min(gap, model.supply[model.dummyRow]); model.supply[model.dummyRow] -= r; gap -= r; }
+  if (gap < 0 && model.dummyCol != null) { const r = Math.min(-gap, model.demand[model.dummyCol]); model.demand[model.dummyCol] -= r; gap += r; }
+  if (gap > 1e-9) {
+    if (model.dummyCol != null) model.demand[model.dummyCol] += gap;
+    else { model.demand.push(gap); model.costs.forEach(r => r.push(0)); model.dummyCol = model.demand.length - 1; }
+  } else if (gap < -1e-9) {
+    if (model.dummyRow != null) model.supply[model.dummyRow] -= gap;
+    else { model.supply.push(-gap); model.costs.push(Array(model.demand.length).fill(0)); model.dummyRow = model.supply.length - 1; }
+  }
+  if (model.dummyRow != null && Math.abs(model.supply[model.dummyRow]) < 1e-9) { model.supply.splice(model.dummyRow, 1); model.costs.splice(model.dummyRow, 1); model.dummyRow = null; }
+  if (model.dummyCol != null && Math.abs(model.demand[model.dummyCol]) < 1e-9) { const c = model.dummyCol; model.demand.splice(c, 1); model.costs.forEach(r => r.splice(c, 1)); model.dummyCol = null; }
+  $("trRows").value = model.supply.length; $("trCols").value = model.demand.length;
+  render(); calculate();
+}
+
+function schedule() { $("calcState").textContent = "Updating…"; clearTimeout(timer); timer = setTimeout(calculate, 100); }
+
+/* ---------- Solver: successive shortest paths on the residual graph ----------
+   Bellman Ford is used because reverse residual arcs carry negative costs. */
+function minCostFlow(n, arcs, balance) {
+  const SS = n, TT = n + 1, N = n + 2, g = Array.from({ length: N }, () => []);
+  function add(u, v, cap, cost) {
+    const a = { to: v, cap, cost, rev: null, initial: cap }, b = { to: u, cap: 0, cost: -cost, rev: a, initial: 0 };
+    a.rev = b; g[u].push(a); g[v].push(b); return a;
+  }
+  arcs.forEach(a => a.ref = add(a.u, a.v, a.cap, a.cost));
+  let need = 0;
+  balance.forEach((x, i) => { if (x > 1e-9) { add(SS, i, x, 0); need += x; } else if (x < -1e-9) add(i, TT, -x, 0); });
+  let sent = 0, loops = 0;
+  while (sent < need - 1e-8) {
+    const d = Array(N).fill(Infinity), p = Array(N).fill(null); d[SS] = 0;
+    for (let z = 0; z < N - 1; z++) {
+      let change = false;
+      for (let u = 0; u < N; u++) if (Number.isFinite(d[u])) for (const e of g[u])
+        if (e.cap > 1e-9 && d[e.to] > d[u] + e.cost + 1e-10) { d[e.to] = d[u] + e.cost; p[e.to] = { u, e }; change = true; }
+      if (!change) break;
+    }
+    if (!Number.isFinite(d[TT])) break;
+    let q = need - sent, v = TT;
+    while (v !== SS) { const t = p[v]; if (!t) { q = 0; break; } q = Math.min(q, t.e.cap); v = t.u; }
+    if (q <= 1e-9) break;
+    v = TT;
+    while (v !== SS) { const t = p[v]; t.e.cap -= q; t.e.rev.cap += q; v = t.u; }
+    sent += q;
+    if (++loops > 20000) throw Error("Solver iteration limit reached.");
+  }
+  // FIX: the flow on an arc is (initial capacity of its residual edge) minus (remaining capacity).
+  // The old code read a.initial from the input arc, which does not exist, so every flow was NaN.
+  const flows = arcs.map(a => { let fl = a.ref.initial - a.ref.cap; if (Math.abs(fl) < 1e-9) fl = 0; return { meta: a, flow: fl }; });
+  const cost = flows.reduce((s, q) => s + q.flow * q.meta.cost, 0);
+  return { ok: sent >= need - 1e-7, sent, need, cost, flows };
+}
+
+function solveTransport() {
+  const { supply: s, demand: d, costs: c } = model, m = s.length, n = d.length;
+  if (c.length !== m || c.some(r => r.length !== n) || [...s, ...d, ...c.flat()].some(x => !Number.isFinite(x) || x < 0))
+    throw Error("Supply, demand and costs must be finite nonnegative numbers.");
+  const S = sum(s), D = sum(d);
+  if (Math.abs(S - D) > 1e-7) throw Error(`Unbalanced model: total supply is ${f(S)} but total demand is ${f(D)}. Click the "Balance with a dummy" button under the supply and demand inputs.`);
+  const arcs = [];
+  for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) arcs.push({ u: i, v: m + j, cap: S, cost: c[i][j], i, j });
+  const z = minCostFlow(m + n, arcs, [...s, ...d.map(x => -x)]);
+  if (!z.ok) throw Error("No feasible shipment plan.");
+  const x = Array.from({ length: m }, () => Array(n).fill(0));
+  z.flows.forEach(q => x[q.meta.i][q.meta.j] = q.flow);
+  return { cost: z.cost, x, units: S };
+}
+
+function solveTransship() {
+  const b = model.balances, n = b.length;
+  if (b.some(x => !Number.isFinite(x)) || Math.abs(sum(b)) > 1e-7)
+    throw Error(`Node balances must be finite and sum to zero (current sum is ${f(sum(b))}).`);
+  const arcs = [], max = b.reduce((a, x) => a + Math.max(0, x), 0);
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    if (i === j) continue;
+    const c = model.costs[i][j]; if (c === null) continue;
+    if (!Number.isFinite(c) || c < 0) throw Error(`Invalid cost on N${i + 1} → N${j + 1}.`);
+    const cap = model.caps[i][j] ?? max;
+    if (!Number.isFinite(cap) || cap < 0) throw Error(`Invalid capacity on N${i + 1} → N${j + 1}.`);
+    arcs.push({ u: i, v: j, cap, cost: c, i, j });
+  }
+  const z = minCostFlow(n, arcs, b);
+  if (!z.ok) throw Error(`Capacity or connectivity prevents routing all demand: routed ${f(z.sent)} of ${f(z.need)} units.`);
+  const x = Array.from({ length: n }, () => Array(n).fill(0));
+  z.flows.forEach(q => x[q.meta.i][q.meta.j] = q.flow);
+  return { cost: z.cost, x, units: z.need };
+}
+
+function solveAssign() {
+  const a = model.costs, m = a.length, n = a[0].length;
+  if (a.some(r => r.length !== n) || a.flat().some(x => !Number.isFinite(x))) throw Error("Assignment costs must all be finite numbers.");
+  const k = Math.min(m, n), src = 0, rb = 1, cb = 1 + m, sink = 1 + m + n, N = sink + 1, arcs = [];
+  for (let i = 0; i < m; i++) arcs.push({ u: src, v: rb + i, cap: 1, cost: 0, kind: "s" });
+  for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) arcs.push({ u: rb + i, v: cb + j, cap: 1, cost: a[i][j], kind: "a", i, j });
+  for (let j = 0; j < n; j++) arcs.push({ u: cb + j, v: sink, cap: 1, cost: 0, kind: "t" });
+  const b = Array(N).fill(0); b[src] = k; b[sink] = -k;
+  const z = minCostFlow(N, arcs, b);
+  if (!z.ok) throw Error("Could not find a complete matching.");
+  const x = Array.from({ length: m }, () => Array(n).fill(0)), pairs = [];
+  z.flows.filter(q => q.meta.kind === "a" && q.flow > .5).forEach(q => { const { i, j, cost } = q.meta; x[i][j] = 1; pairs.push({ i, j, cost }); });
+  return { cost: z.cost, x, pairs,
+    unmatchedRows: Array.from({ length: m }, (_, i) => i).filter(i => !pairs.some(p => p.i === i)),
+    unmatchedCols: Array.from({ length: n }, (_, j) => j).filter(j => !pairs.some(p => p.j === j)) };
+}
+
+/* ---------- Result tables ---------- */
+function table(x, rows, cols, extra) {
+  let used = 0;
+  let h = '<div class="matrix-wrap"><table class="alloc"><tr><th></th>' + cols.map(v => `<th>${esc(v)}</th>`).join("") + (extra ? `<th>${esc(extra.rowHead)}</th>` : "") + '</tr>';
+  h += x.map((r, i) => `<tr><th>${esc(rows[i])}</th>` + r.map(v => { const u = v > EPS; if (u) used++; return `<td class="${u ? "used" : "zero"}">${f(v)}</td>`; }).join("")
+    + (extra ? `<td class="total">${extra.rowVals[i]}</td>` : "") + '</tr>').join("");
+  if (extra) h += `<tr><th>${esc(extra.colHead)}</th>` + extra.colVals.map(v => `<td class="total">${v}</td>`).join("") + '<td></td></tr>';
+  return { h: h + '</table></div>', used };
+}
+
+function decisionList(items, title, emptyText, qtyHead) {
+  const body = items.length
+    ? items.map((q, i) => `<tr><td>${i + 1}</td><td>${esc(q.from)}</td><td>${esc(q.to)}</td><td><b>${esc(q.amount)}</b></td><td>${f(q.cost)}</td><td>${f(q.contrib)}</td></tr>`).join("")
+      + `<tr><td colspan="5" class="total" style="text-align:right">Total cost</td><td class="total">${f(sum(items.map(q => q.contrib)))}</td></tr>`
+    : `<tr><td colspan="6">${esc(emptyText)}</td></tr>`;
+  return `<section class="decision-list"><h3>${esc(title)}</h3><div class="matrix-wrap"><table class="alloc"><thead><tr><th>#</th><th>From</th><th>To</th><th>${esc(qtyHead)}</th><th>Unit cost</th><th>Cost contribution</th></tr></thead><tbody>${body}</tbody></table></div></section>`;
+}
+
+/* ---------- Network diagram ---------- */
+function renderNetwork(z) {
+  const box = $("networkViz"), showUnused = $("showUnused").checked, R = 30, W = 1000;
+  const unit = (x, y) => { const L = Math.hypot(x, y) || 1; return { x: x / L, y: y / L }; };
+  let H, nodes = [], edges = [], heads = "", legendOn, legendOff;
+
+  if (mode === "transport" || mode === "assign") {
+    const m = z.x.length, n = z.x[0].length;
+    H = Math.max(440, 160 + Math.max(m, n) * 82);
+    const top = 78, usable = H - top - 82, XL = 170, XR = 830;
+    for (let i = 0; i < m; i++) {
+      const y = top + (i + .5) * usable / m;
+      nodes.push(mode === "transport"
+        ? { x: XL, y, title: "S" + (i + 1), sub: (isDummyRow(i) ? "Dummy supply " : "Supply ") + f(model.supply[i]), kind: "supply", dummy: isDummyRow(i) }
+        : { x: XL, y, title: "A" + (i + 1), sub: "Agent " + (i + 1), kind: "supply" });
+    }
+    for (let j = 0; j < n; j++) {
+      const y = top + (j + .5) * usable / n;
+      nodes.push(mode === "transport"
+        ? { x: XR, y, title: "D" + (j + 1), sub: (isDummyCol(j) ? "Dummy demand " : "Demand ") + f(model.demand[j]), kind: "demand", dummy: isDummyCol(j) }
+        : { x: XR, y, title: "T" + (j + 1), sub: "Task " + (j + 1), kind: "demand" });
+    }
+    for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) {
+      const q = z.x[i][j], c = model.costs[i][j], on = mode === "assign" ? q > .5 : q > EPS, A = nodes[i], B = nodes[m + j];
+      const x1 = A.x + R, y1 = A.y, x2 = B.x - R, y2 = B.y;
+      edges.push({ x1, y1, x2, y2, cx: (x1 + x2) / 2, cy: (y1 + y2) / 2, on, directed: false,
+        label: on ? (mode === "assign" ? `Cost ${f(c)} | Assigned` : `Cost ${f(c)} | Ship ${f(q)}`) : f(c) });
+    }
+    const [l, r] = mode === "transport" ? ["SUPPLY NODES", "DEMAND NODES"] : ["AGENTS", "TASKS"];
+    heads = `<text x="${XL}" y="34" text-anchor="middle" font-size="12" font-weight="700" fill="#64748b" letter-spacing="1">${l}</text><text x="${XR}" y="34" text-anchor="middle" font-size="12" font-weight="700" fill="#64748b" letter-spacing="1">${r}</text>`;
+    legendOn = mode === "assign" ? "Assigned pair (unit cost)" : "Used route (unit cost | quantity)";
+    legendOff = "Unused route (unit cost)";
+  } else {
+    const n = model.balances.length; H = 600;
+    const P = Array.from({ length: n }, (_, i) => { const a = -Math.PI / 2 + 2 * Math.PI * i / n; return { x: 500 + 310 * Math.cos(a), y: 285 + 200 * Math.sin(a) }; });
+    P.forEach((p, i) => { const b = model.balances[i]; nodes.push({ x: p.x, y: p.y, title: "N" + (i + 1), sub: b > 0 ? "Supply " + f(b) : b < 0 ? "Demand " + f(-b) : "Transshipment", kind: b > 0 ? "supply" : b < 0 ? "demand" : "trans" }); });
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      if (i === j || model.costs[i][j] === null) continue;
+      const q = z.x[i][j], c = model.costs[i][j], cap = model.caps[i][j], on = q > EPS, A = P[i], B = P[j];
+      const dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+      // Opposite arcs bend to opposite sides (the normal flips with direction), so they never overlap.
+      const bend = model.costs[j][i] !== null ? 42 : 0;
+      const cx = (A.x + B.x) / 2 + nx * bend, cy = (A.y + B.y) / 2 + ny * bend;
+      const u1 = unit(cx - A.x, cy - A.y), u2 = unit(cx - B.x, cy - B.y);
+      const capTxt = cap != null ? ` of ${f(cap)}` : "";
+      edges.push({ x1: A.x + u1.x * R, y1: A.y + u1.y * R, x2: B.x + u2.x * (R + 1), y2: B.y + u2.y * (R + 1), cx, cy, on, directed: true,
+        label: on ? `Cost ${f(c)} | Flow ${f(q)}${capTxt}` : `${f(c)}${cap != null ? ` | cap ${f(cap)}` : ""}` });
+    }
+    legendOn = "Arc with flow (cost | flow of capacity)";
+    legendOff = "Unused arc (cost | capacity)";
+  }
+
+  // Label placement: slide each label along its edge until it does not cover nodes or other labels.
+  const boxes = [];
+  nodes.forEach(nd => {
+    boxes.push({ x0: nd.x - R - 4, y0: nd.y - R - 4, x1: nd.x + R + 4, y1: nd.y + R + 4 });
+    boxes.push({ x0: nd.x - 58, y0: nd.y + R + 5, x1: nd.x + 58, y1: nd.y + R + 24 });
+  });
+  const overlap = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  const T = [.5, .42, .58, .34, .66, .27, .73, .46, .54, .38, .62, .21, .79, .15, .85];
+  const order = edges.filter(e => e.on).concat(showUnused ? edges.filter(e => !e.on) : []);
+  order.forEach(e => {
+    const fs = e.on ? 13 : 11.5, w = e.label.length * (e.on ? 7.3 : 6.6) + (e.on ? 18 : 12), h = e.on ? 24 : 19;
+    let best = null;
+    for (const t of T) {
+      const s = 1 - t, px = s * s * e.x1 + 2 * s * t * e.cx + t * t * e.x2, py = s * s * e.y1 + 2 * s * t * e.cy + t * t * e.y2;
+      const bx = { x0: px - w / 2 - 2, y0: py - h / 2 - 2, x1: px + w / 2 + 2, y1: py + h / 2 + 2 };
+      let o = 0; for (const b of boxes) o += overlap(bx, b);
+      if (!best || o < best.o) best = { o, px, py, bx };
+      if (o === 0) break;
+    }
+    boxes.push(best.bx); e.lab = { x: best.px, y: best.py, w, h, fs };
+  });
+
+  const d = e => `M ${e.x1.toFixed(1)} ${e.y1.toFixed(1)} Q ${e.cx.toFixed(1)} ${e.cy.toFixed(1)} ${e.x2.toFixed(1)} ${e.y2.toFixed(1)}`;
+  const label = e => !e.lab ? "" : `<g><rect x="${(e.lab.x - e.lab.w / 2).toFixed(1)}" y="${(e.lab.y - e.lab.h / 2).toFixed(1)}" width="${e.lab.w.toFixed(1)}" height="${e.lab.h}" rx="6" fill="${e.on ? "#fff1f2" : "#ffffff"}" stroke="${e.on ? "#dc2626" : "#cbd5e1"}" stroke-width="${e.on ? 1.6 : 1}"/><text x="${e.lab.x.toFixed(1)}" y="${(e.lab.y + e.lab.fs * .36).toFixed(1)}" text-anchor="middle" font-size="${e.lab.fs}" font-weight="700" fill="${e.on ? "#b91c1c" : "#64748b"}">${esc(e.label)}</text></g>`;
+  const fill = { supply: ["#eaf2ff", "#3975c8"], demand: ["#fff4df", "#d18a22"], trans: ["#f0f4f8", "#718096"] };
+  const node = nd => `<g><circle cx="${nd.x.toFixed(1)}" cy="${nd.y.toFixed(1)}" r="${R}" fill="${fill[nd.kind][0]}" stroke="${fill[nd.kind][1]}" stroke-width="2.2" ${nd.dummy ? 'stroke-dasharray="5 4"' : ""}/><text x="${nd.x.toFixed(1)}" y="${(nd.y + 5).toFixed(1)}" text-anchor="middle" font-size="15" font-weight="800" fill="#1d2b42">${esc(nd.title)}</text><text x="${nd.x.toFixed(1)}" y="${(nd.y + R + 18).toFixed(1)}" text-anchor="middle" font-size="12" fill="#64748b" stroke="#fbfdff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${esc(nd.sub)}</text></g>`;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${mode} network diagram" font-family="system-ui,Segoe UI,Arial"><defs>`
+    + `<marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="17" markerHeight="17" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/></marker>`
+    + `<marker id="arrowGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6b6"/></marker></defs>` + heads;
+  edges.filter(e => !e.on).forEach(e => svg += `<path d="${d(e)}" fill="none" stroke="#b8c2d0" stroke-width="1.8" ${e.directed ? 'marker-end="url(#arrowGray)"' : ""}/>`);
+  edges.filter(e => e.on).forEach(e => svg += `<path d="${d(e)}" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="${e.directed ? "butt" : "round"}" ${e.directed ? 'marker-end="url(#arrowRed)"' : ""}/>`);
+  edges.filter(e => !e.on).forEach(e => svg += label(e));
+  edges.filter(e => e.on).forEach(e => svg += label(e));
+  nodes.forEach(nd => svg += node(nd));
+  svg += `<g transform="translate(230 ${H - 24})" font-size="12.5" font-weight="700" fill="#475569"><line x1="0" y1="0" x2="36" y2="0" stroke="#dc2626" stroke-width="5"/><text x="46" y="4">${esc(legendOn)}</text><line x1="330" y1="0" x2="366" y2="0" stroke="#b8c2d0" stroke-width="2"/><text x="376" y="4">${esc(legendOff)}</text></g></svg>`;
+  box.innerHTML = svg;
+}
+
+/* ---------- Main calculation ---------- */
+function calculate() {
+  updateBalance();
+  try {
+    let z, view, units, nonzero, head;
+    if (mode === "transport") {
+      z = solveTransport();
+      const rows = model.supply.map((_, i) => srcName(i)), cols = model.demand.map((_, j) => dstName(j));
+      const t = table(z.x, rows, cols, { rowHead: "Supply", rowVals: model.supply.map(f), colHead: "Demand", colVals: model.demand.map(f) });
+      const items = [];
+      z.x.forEach((r, i) => r.forEach((q, j) => { if (q > EPS) items.push({ from: srcName(i), to: dstName(j), amount: f(q), cost: model.costs[i][j], contrib: q * model.costs[i][j] }); }));
+      view = t.h + decisionList(items, "Shipment plan", "No shipments in this solution.", "Quantity");
+      units = z.units; nonzero = t.used;
+      let extra = "";
+      if (model.dummyCol != null) {
+        const left = z.x.map((r, i) => [i, r[model.dummyCol]]).filter(p => p[1] > EPS).map(p => `S${p[0] + 1}: ${f(p[1])}`);
+        extra += `<br><span class="muted">Supply left unshipped (sent to the dummy destination): ${left.join(", ") || "none"}.</span>`;
+      }
+      if (model.dummyRow != null) {
+        const short = z.x[model.dummyRow].map((q, j) => [j, q]).filter(p => p[1] > EPS).map(p => `D${p[0] + 1}: ${f(p[1])}`);
+        extra += `<br><span class="muted">Demand left unmet (filled by the dummy source): ${short.join(", ") || "none"}.</span>`;
+      }
+      const dummyTxt = model.dummyRow != null || model.dummyCol != null ? " (dummy allocations are not real shipments)" : "";
+      head = `<b>Optimal transportation cost: ${f(z.cost)}</b><br><span class="muted">All ${f(units)} units allocated; all demand satisfied${dummyTxt}.</span>${extra}`;
+    } else if (mode === "transship") {
+      z = solveTransship();
+      const L = model.balances.map((_, i) => "N" + (i + 1));
+      const out = z.x.map(r => sum(r)), inn = L.map((_, j) => sum(z.x.map(r => r[j])));
+      const t = table(z.x, L, L, { rowHead: "Total out", rowVals: out.map(f), colHead: "Total in", colVals: inn.map(f) });
+      const items = [], full = [];
+      z.x.forEach((r, i) => r.forEach((q, j) => {
+        if (q > EPS) {
+          items.push({ from: "N" + (i + 1), to: "N" + (j + 1), amount: f(q), cost: model.costs[i][j], contrib: q * model.costs[i][j] });
+          if (model.caps[i][j] != null && q >= model.caps[i][j] - 1e-7) full.push(`N${i + 1} → N${j + 1}`);
+        }
+      }));
+      view = t.h + decisionList(items, "Transshipment flow plan", "No flows in this solution.", "Flow");
+      units = z.units; nonzero = t.used;
+      head = `<b>Minimum transshipment cost: ${f(z.cost)}</b><br><span class="muted">All ${f(units)} required units routed within arc capacities. At every node, total out minus total in equals its balance.</span>`
+        + (full.length ? `<br><span class="muted">Arcs at full capacity: ${full.join(", ")}.</span>` : "");
+    } else {
+      z = solveAssign();
+      const t = table(z.x, z.x.map((_, i) => "Agent " + (i + 1)), z.x[0].map((_, j) => "Task " + (j + 1)));
+      view = t.h + decisionList(z.pairs.map(q => ({ from: "Agent " + (q.i + 1), to: "Task " + (q.j + 1), amount: "Assigned", cost: q.cost, contrib: q.cost })), "Optimal assignment pairs", "No assignments in this solution.", "Status");
+      units = z.pairs.length; nonzero = t.used;
+      const p = z.pairs.map(q => `Agent ${q.i + 1} → Task ${q.j + 1} (cost ${f(q.cost)})`).join("<br>");
+      head = `<b>Minimum assignment cost: ${f(z.cost)}</b><br><span class="muted">${p}</span>`
+        + (z.unmatchedRows.length || z.unmatchedCols.length ? `<br><span class="muted">Unmatched agents: ${z.unmatchedRows.map(i => i + 1).join(", ") || "none"}; unmatched tasks: ${z.unmatchedCols.map(i => i + 1).join(", ") || "none"}.</span>` : "");
+    }
+    $("result").className = "result"; $("result").innerHTML = head;
+    $("solution").innerHTML = view;
+    lastZ = z; renderNetwork(z);
+    $("stats").innerHTML = `<div class="stat"><strong>${f(z.cost)}</strong><span>Optimal total cost</span></div><div class="stat"><strong>${f(units)}</strong><span>${mode === "assign" ? "Assignments" : "Units"}</span></div><div class="stat"><strong>${nonzero}</strong><span>Nonzero decisions</span></div>`;
+    $("calcState").textContent = "Optimal solution updated";
+  } catch (e) {
+    lastZ = null;
+    $("result").className = "error"; $("result").textContent = "Cannot calculate: " + e.message;
+    $("stats").innerHTML = ""; $("solution").innerHTML = "";
+    $("networkViz").innerHTML = '<div class="help" style="padding:18px">Correct the model data to display the network solution.</div>';
+    $("calcState").textContent = "Check model";
+  }
+}
+
+/* ---------- Controls ---------- */
+function restore() {
+  model = clone(samples[mode]);
+  if (mode === "transport") { $("trRows").value = model.supply.length; $("trCols").value = model.demand.length; }
+  if (mode === "transship") $("tsN").value = model.balances.length;
+  if (mode === "assign") { $("asRows").value = model.costs.length; $("asCols").value = model.costs[0].length; }
+  render(); calculate();
+}
+function switchMode(m) {
+  mode = m;
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.mode === m));
+  $("transportEditor").classList.toggle("hidden", m !== "transport");
+  $("transshipEditor").classList.toggle("hidden", m !== "transship");
+  $("assignEditor").classList.toggle("hidden", m !== "assign");
+  $("editorTitle").textContent = m === "transport" ? "Transportation data" : m === "transship" ? "Transshipment network data" : "Assignment data";
+  $("solutionTitle").textContent = m === "transport" ? "Optimal shipment plan" : m === "transship" ? "Optimal flow on each arc" : "Optimal assignment";
+  $("modelNote").textContent = m === "transport" ? "Balanced transportation model: ship all supply and satisfy all demand at minimum total cost."
+    : m === "transship" ? "Positive node balances are supplies; negative balances are demands. Costs and capacities define the directed arcs."
+    : "Find a minimum cost one to one matching. Rectangular models match the smaller side completely.";
+  restore();
+}
+function resizeTr() {
+  const r = Math.max(1, Math.min(8, +$("trRows").value || 1)), c = Math.max(1, Math.min(8, +$("trCols").value || 1)), o = model;
+  model = { supply: Array.from({ length: r }, (_, i) => o.supply[i] ?? 10),
+            demand: Array.from({ length: c }, (_, j) => o.demand[j] ?? Math.floor(r * 10 / c)),
+            costs: Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => o.costs[i]?.[j] ?? 1)),
+            dummyRow: o.dummyRow != null && o.dummyRow < r ? o.dummyRow : null,
+            dummyCol: o.dummyCol != null && o.dummyCol < c ? o.dummyCol : null };
+  $("trRows").value = r; $("trCols").value = c; render(); calculate();
+}
+function resizeTs() {
+  const n = Math.max(2, Math.min(8, +$("tsN").value || 2)), o = model;
+  model = { balances: Array.from({ length: n }, (_, i) => o.balances[i] ?? 0),
+            costs: Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => i === j ? null : (o.costs[i]?.[j] ?? null))),
+            caps: Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => i === j ? null : (o.caps[i]?.[j] ?? null))) };
+  $("tsN").value = n; render(); calculate();
+}
+function resizeAs() {
+  const r = Math.max(1, Math.min(8, +$("asRows").value || 1)), c = Math.max(1, Math.min(8, +$("asCols").value || 1)), o = model;
+  model = { costs: Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => o.costs[i]?.[j] ?? 0)) };
+  $("asRows").value = r; $("asCols").value = c; render(); calculate();
+}
+
+$("tabs").onclick = e => { const b = e.target.closest("[data-mode]"); if (b) switchMode(b.dataset.mode); };
+$("restore").onclick = restore;
+$("resizeTr").onclick = resizeTr; $("resizeTs").onclick = resizeTs; $("resizeAs").onclick = resizeAs;
+$("solveBtn").onclick = () => { $("calcState").textContent = "Solving…"; calculate(); };
+$("showUnused").onchange = () => { if (lastZ) renderNetwork(lastZ); };
+restore();
+</script></body></html>
