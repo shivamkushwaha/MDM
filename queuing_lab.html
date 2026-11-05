@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queuing Theory Virtual Laboratory</title>
+<style>
+:root{--navy:#173b62;--blue:#2563eb;--teal:#0f9d91;--ink:#172536;--muted:#64748b;--bg:#f3f6fa;--card:#fff;--line:#dce4ee;--good:#16834a;--warn:#b45309;--bad:#b42318}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+header{background:linear-gradient(115deg,#173b62,#176b83);color:white;padding:24px clamp(16px,4vw,48px)}
+header h1{margin:0;font-size:clamp(24px,3vw,36px);letter-spacing:.2px}header p{margin:6px 0 0;color:#dcecf5}
+.wrap{max-width:1450px;margin:auto;padding:20px clamp(12px,3vw,32px) 48px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.tab{border:1px solid var(--line);background:white;border-radius:10px;padding:9px 14px;cursor:pointer;color:var(--navy);font-weight:650}.tab.active{background:var(--navy);color:white;border-color:var(--navy)}
+.panel{display:none}.panel.active{display:block}
+.layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:17px;box-shadow:0 2px 8px #19324b08;margin-bottom:15px}
+h2{font-size:20px;margin:0 0 12px;color:var(--navy)}h3{font-size:16px;margin:0 0 10px;color:var(--navy)}
+label{display:block;font-weight:650;font-size:13px;margin:12px 0 5px;color:#334155}
+input,select{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px 10px;background:#fff;color:var(--ink);font:inherit}
+input[type=range]{padding:0;accent-color:var(--blue)}.range-row{display:grid;grid-template-columns:1fr 82px;gap:10px;align-items:center}
+button{border:0;border-radius:9px;padding:10px 14px;font:650 14px inherit;cursor:pointer;background:var(--blue);color:white}
+button.secondary{background:#e8eef6;color:var(--navy)}button.dark{background:var(--navy)}button.green{background:var(--teal)}button:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.metric{background:#f7f9fc;border:1px solid var(--line);border-radius:11px;padding:12px}.metric .k{font-size:12px;color:var(--muted)}.metric .v{font-size:23px;font-weight:750;color:var(--navy);margin-top:3px}.metric .u{font-size:11px;color:var(--muted)}
+.status{padding:10px 12px;border-radius:9px;background:#e8f5ee;color:var(--good);font-weight:650;margin:10px 0}.status.bad{background:#fff0ef;color:var(--bad)}.status.warn{background:#fff7e8;color:var(--warn)}
+.queue-stage{background:linear-gradient(#f9fbfe,#eef4f9);border:1px solid var(--line);border-radius:12px;padding:14px;min-height:225px}
+.queue-line{display:flex;gap:8px;align-items:center;min-height:56px;flex-wrap:wrap;border-bottom:1px dashed #b8c8d8;padding:8px 0 13px}.person{width:31px;height:31px;border-radius:50%;background:#dbeafe;color:#1d4ed8;display:grid;place-items:center;font-size:17px;border:1px solid #93c5fd}.person.serving{background:#d1fae5;color:#047857;border-color:#6ee7b7}
+.servers{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin-top:15px}.server{border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center;background:white}.server.busy{border-color:#6ee7b7;background:#effcf6}.server .person{margin:5px auto}
+canvas{width:100%;height:260px;display:block;border:1px solid var(--line);border-radius:10px;background:white}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:15px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{background:#f4f7fb;color:var(--navy)}
+.formula{background:#f5f8fc;border-left:3px solid var(--teal);padding:10px 12px;border-radius:6px;margin:8px 0;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px}
+.small{font-size:12px;color:var(--muted)}.pill{display:inline-block;padding:3px 8px;border-radius:20px;background:#eaf1fb;color:#244b78;font-size:11px;font-weight:700}
+.experiment{border:1px solid var(--line);border-radius:10px;padding:12px;margin:9px 0}.experiment p{margin:5px 0;color:var(--muted);font-size:13px}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.metric-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.two{grid-template-columns:1fr}.metric .v{font-size:20px}.wrap{padding-left:10px;padding-right:10px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Queuing Theory Virtual Laboratory</h1>
+  <p>Interactive M/M/1 and M/M/c simulation · Transient and steady-state analysis · Service-cost optimisation</p>
+</header>
+<div class="wrap">
+  <nav class="tabs" aria-label="Dashboard sections">
+    <button class="tab active" data-tab="lab">Live Laboratory</button>
+    <button class="tab" data-tab="analysis">Theory & Performance</button>
+    <button class="tab" data-tab="economics">Economic Analysis</button>
+    <button class="tab" data-tab="experiments">Student Experiments</button>
+  </nav>
+
+  <section id="lab" class="panel active">
+    <div class="layout">
+      <aside>
+        <div class="card">
+          <h2>Simulation controls</h2>
+          <label for="lambda">Arrival rate λ (customers/minute)</label>
+          <div class="range-row"><input id="lambdaRange" type="range" min="0.0083333" max="0.3333333" step="0.0083333" value="0.1333333"><input id="lambda" type="number" min="0.0001" step="0.001" value="0.1333333"></div>
+          <label for="mu">Service rate μ per server (customers/minute)</label>
+          <div class="range-row"><input id="muRange" type="range" min="0.0083333" max="0.4166667" step="0.0083333" value="0.0833333"><input id="mu" type="number" min="0.0001" step="0.001" value="0.0833333"></div>
+          <label for="servers">Number of servers (c)</label>
+          <select id="servers"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+          <label for="speed">Animation speed</label>
+          <select id="speed"><option value="0.5">Slow</option><option value="1" selected>Normal</option><option value="2">Fast</option><option value="4">Very fast</option></select>
+          <label for="duration">Simulation duration (simulated minutes)</label>
+          <input id="duration" type="number" min="1" max="600000" value="6000">
+          <label for="seed">Random seed (optional)</label>
+          <input id="seed" type="number" placeholder="Leave blank for random">
+          <div class="actions">
+            <button id="start">Start</button><button class="secondary" id="pause">Pause</button>
+            <button class="secondary" id="step">Step</button><button class="dark" id="reset">Reset</button>
+          </div>
+          <p class="hint">The model uses exponential inter-arrival and service times, a common FCFS queue and independent server service times.</p>
+        </div>
+        <div class="card">
+          <h3>Current model</h3>
+          <div class="metric"><div class="k">Model selected</div><div class="v" id="modelName">M/M/2</div><div class="u">Poisson arrivals · Exponential service</div></div>
+          <div id="stability" class="status">Stable system</div>
+          <p class="small" id="stabilityText">λ must be less than cμ for a steady state to exist.</p>
+        </div>
+      </aside>
+
+      <main>
+        <div class="card">
+          <h2>Live system dashboard</h2>
+          <div class="metric-grid">
+            <div class="metric"><div class="k">Simulation clock</div><div class="v" id="clock">0.00</div><div class="u">minutes</div></div>
+            <div class="metric"><div class="k">Total arrivals</div><div class="v" id="arrivals">0</div><div class="u">customers</div></div>
+            <div class="metric"><div class="k">Total served</div><div class="v" id="served">0</div><div class="u">customers</div></div>
+            <div class="metric"><div class="k">In system now</div><div class="v" id="inSystem">0</div><div class="u">waiting + service</div></div>
+            <div class="metric"><div class="k">Waiting now</div><div class="v" id="waiting">0</div><div class="u">customers</div></div>
+            <div class="metric"><div class="k">Busy servers</div><div class="v" id="busy">0</div><div class="u">servers</div></div>
+            <div class="metric"><div class="k">Mean wait so far</div><div class="v" id="meanWait">0.00</div><div class="u">minutes · completed customers</div></div>
+            <div class="metric"><div class="k">Observed utilisation</div><div class="v" id="observedUtil">0%</div><div class="u">server-time based</div></div>
+          </div>
+          <div class="actions"><button id="downloadCustomers" class="green">Download customer data CSV</button><button id="downloadEvents" class="secondary">Download event log CSV</button></div>
+          <p class="hint">Export includes simulated times in minutes. Customer data includes every arrival, including customers still waiting or receiving service when the run ends.</p>
+        </div>
+        <div class="card">
+          <h2>Customer queue animation</h2>
+          <div class="queue-stage">
+            <strong>Common waiting line</strong>
+            <div id="queueVisual" class="queue-line"><span class="small">No customers waiting</span></div>
+            <div id="serverVisual" class="servers"></div>
+          </div>
+          <p class="small">Blue figures are waiting customers; green figures are receiving service. Animation reflects scheduled simulation events.</p>
+        </div>
+        <div class="card">
+          <h2>System size over time</h2>
+          <canvas id="timeline" width="1000" height="280" aria-label="Number of customers in system over simulation time"></canvas>
+          <p class="small">The graph records the number of customers in the system after each event. It is a sample path, not a theoretical average.</p>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <section id="analysis" class="panel">
+    <div class="card">
+      <h2>Theoretical operating characteristics</h2>
+      <p class="small">The calculations below use the current λ, μ and c settings. Steady-state values are shown only when the model is stable.</p>
+      <div id="theoryStatus" class="status"></div>
+      <div class="metric-grid" id="theoryMetrics"></div>
+    </div>
+    <div class="two">
+      <div class="card">
+        <h3>Key formulas</h3>
+        <div class="formula">M/M/1 stability: λ &lt; μ</div>
+        <div class="formula">M/M/c stability: λ &lt; cμ</div>
+        <div class="formula">ρ = λ / (cμ) · utilisation per server</div>
+        <div class="formula">L = Lq + λ/μ</div>
+        <div class="formula">W = Wq + 1/μ (W and Wq are in minutes)</div>
+        <div class="formula">L = λW and Lq = λWq (Little's Law)</div>
+        <p class="small">For M/M/1, c = 1 and ρ = λ/μ. For M/M/c, the Erlang-C formula is used.</p>
+      </div>
+      <div class="card">
+        <h3>Probability distribution</h3>
+        <canvas id="distribution" width="700" height="280"></canvas>
+        <p class="small">Steady-state probability Pₙ that n customers are in the system. Displayed only for stable systems.</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Transient simulation estimates</h3>
+      <div class="metric-grid">
+        <div class="metric"><div class="k">Time-average L</div><div class="v" id="transL">0.00</div></div>
+        <div class="metric"><div class="k">Time-average Lq</div><div class="v" id="transLq">0.00</div></div>
+        <div class="metric"><div class="k">Customer-average W</div><div class="v" id="transW">—</div></div>
+        <div class="metric"><div class="k">Customer-average Wq</div><div class="v" id="transWq">—</div></div>
+      </div>
+      <p class="small">These are finite-run estimates from the current simulation. They can differ from theoretical steady-state values because of randomness, finite duration and initial conditions.</p>
+    </div>
+  </section>
+
+  <section id="economics" class="panel">
+    <div class="card">
+      <h2>Economics of multiple servers</h2>
+      <p class="small">Enter costs per minute. Waiting cost is based on the expected number of customers in the queue (Lq) in each stable configuration.</p>
+      <div class="two">
+        <div><label for="serverCost">Cost per server per minute</label><input id="serverCost" type="number" min="0" step="0.01" value="0.5"></div>
+        <div><label for="waitCost">Waiting cost per customer-minute</label><input id="waitCost" type="number" min="0" step="0.01" value="0.2"></div>
+      </div>
+      <div class="actions"><button id="calcCosts">Calculate cost comparison</button></div>
+    </div>
+    <div class="card">
+      <h3>Cost comparison by server count</h3>
+      <div class="table-wrap"><table id="costTable"><thead><tr><th>Servers</th><th>Utilisation</th><th>Server cost/min</th><th>Waiting cost/min</th><th>Total cost/min</th></tr></thead><tbody></tbody></table></div>
+      <div id="optimal" class="status">Calculate to identify the lowest-cost stable option.</div>
+      <canvas id="costChart" width="1000" height="300"></canvas>
+    </div>
+  </section>
+
+  <section id="experiments" class="panel">
+    <div class="card">
+      <h2>Student experiment laboratory</h2>
+      <p>Choose an experiment to load its parameters into the simulation. Press Start to observe the system and then discuss the questions.</p>
+      <div class="experiment"><strong>1. Effect of arrival rate</strong><p>Set μ = 0.1667 customers/minute and c = 1. Increase λ from 0.0333 towards 0.1500 customers/minute. Observe queue length and waiting time.</p><button class="secondary" onclick="loadExperiment(1)">Load experiment</button></div>
+      <div class="experiment"><strong>2. High server utilisation</strong><p>Set λ = 0.1333 and μ = 0.1667 customers/minute, with c = 1. Increase λ gradually and observe waiting time as utilisation approaches 100%.</p><button class="secondary" onclick="loadExperiment(2)">Load experiment</button></div>
+      <div class="experiment"><strong>3. Unstable single-server system</strong><p>Set λ = 0.1333 and μ = 0.0833 customers/minute, with c = 1. Observe queue growth and why a steady-state distribution does not exist.</p><button class="secondary" onclick="loadExperiment(3)">Load experiment</button></div>
+      <div class="experiment"><strong>4. Economies of multiple servers</strong><p>Set λ = 0.1333 and μ = 0.0833 customers/minute. Compare c = 1, 2 and 3. One server is unstable while two and three servers are stable.</p><button class="secondary" onclick="loadExperiment(4)">Load experiment</button></div>
+      <div class="experiment"><strong>5. Transient versus steady state</strong><p>Start from an empty system with stable parameters. Compare finite-run averages with theoretical long-run values. Repeat with a longer run.</p><button class="secondary" onclick="loadExperiment(5)">Load experiment</button></div>
+      <div class="experiment"><strong>6. Demand shock</strong><p>Start with a stable system. Pause, change λ (customers/minute), and restart to compare the response under different demand levels.</p><button class="secondary" onclick="loadExperiment(6)">Load experiment</button></div>
+      <div class="card" style="background:#f7f9fc;margin-top:14px">
+        <h3>Questions for students</h3>
+        <ol>
+          <li>What happens to Wq as utilisation approaches 100%?</li>
+          <li>Why is λ &lt; cμ necessary for a stable M/M/c system?</li>
+          <li>Why can adding a server reduce waiting cost but increase service cost?</li>
+          <li>Why might a short simulation differ from theoretical steady-state values?</li>
+          <li>Which server configuration minimises total cost for the cost assumptions provided?</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</div>
+<footer>Queuing Theory Virtual Laboratory · Educational simulation · Time unit: minutes · Standard M/M/1 and M/M/c assumptions</footer>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+let state=null, timer=null, running=false, rng=Math.random, speed=1;
+
+function params(){
+ const rawLambda=Number($('lambda').value), rawMu=Number($('mu').value);
+ return {
+  lambda:Number.isFinite(rawLambda)?Math.max(0,rawLambda):0,
+  mu:Number.isFinite(rawMu)?Math.max(0,rawMu):0,
+  c:Math.max(1,parseInt($('servers').value,10)||1)
+ };
+}
+function fmt(x,d=3){return Number.isFinite(x)?x.toFixed(d):"—"}
+function setStatus(el,stable,text){el.className="status "+(stable?"":"bad");el.textContent=text}
+function theoretical(p){
+ const {lambda:l,mu:m,c}=p;
+ if(l===0 && m>0)return {stable:true,rho:0,p0:1,pwait:0,Lq:0,L:0,Wq:0,W:1/m};
+ if(!(l>=0&&m>0&&c>=1))return {stable:false,rho:NaN};
+ const a=l/m,rho=l/(c*m),stable=l<c*m;
+ if(!stable)return {stable:false,rho};
+ let sum=0,term=1;
+ for(let n=0;n<c;n++){if(n===0)term=1;else term*=a/n;sum+=term}
+ let tc=1;for(let n=1;n<=c;n++)tc*=n;
+ let ac=1;for(let n=0;n<c;n++)ac*=a;
+ const tail=ac/(tc*(1-rho)),p0=1/(sum+tail);
+ const pwait=tail*p0;
+ const Lq=p0*ac*rho/(tc*Math.pow(1-rho,2));
+ const L=Lq+a,Wq=l>0?Lq/l:0,W=Wq+1/m;
+ return {stable,rho,p0,pwait,Lq,L,Wq,W};
+}
+function seededRandom(seed){let x=seed>>>0;return ()=>{x=(x+0x6D2B79F5)|0;let t=Math.imul(x^(x>>>15),1|x);t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296}}
+function exp(rate){if(rate<=0)return Infinity;return -Math.log(Math.max(1e-12,1-rng()))/rate}
+function updateControls(){
+ $('start').disabled=running;
+ $('pause').disabled=!running;
+ $('step').disabled=running;
+}
+function resetState(){
+ const p=params(),seed=$('seed').value.trim();
+ rng=seed!==""?seededRandom(Number(seed)):Math.random;
+ state={
+  t:0,arrivals:0,served:0,queue:[],servers:Array.from({length:p.c},()=>null),
+  nextArrival:exp(p.lambda),events:[],customers:[],eventLog:[],
+  areaN:0,areaQ:0,areaBusy:0,waitSum:0,systemTimeSum:0,
+  history:[{t:0,n:0}],duration:Math.max(1,Number($('duration').value)||6000)
+ };
+ render();updateControls();
+}
+function busyCount(){return state.servers.filter(Boolean).length}
+function totalN(){return state.queue.length+busyCount()}
+function startService(customer,i){
+ customer.serviceStart=state.t;
+ customer.server=i+1;
+ customer.serviceTime=exp(params().mu);
+ customer.scheduledEnd=state.t+customer.serviceTime;
+ state.servers[i]=customer;
+ state.events.push({time:customer.scheduledEnd,type:"departure",server:i,customer});
+}
+function recordEvent(type,customerId,serverNumber){
+ state.eventLog.push({
+  event_sequence:state.eventLog.length+1,
+  event_type:type,
+  clock_time_min:state.t,
+  customer_id:customerId,
+  server_id:serverNumber||"",
+  queue_length_after_event:state.queue.length,
+  customers_in_system_after_event:totalN(),
+  busy_servers_after_event:busyCount()
+ });
+}
+function nextEvent(){
+ let arrival=state.nextArrival,idx=-1,best=Infinity;
+ state.events.forEach((e,i)=>{if(e.time<best){best=e.time;idx=i}});
+ if(arrival<=best)return {time:arrival,type:"arrival"};
+ if(idx>=0)return {...state.events.splice(idx,1)[0]};
+ return null;
+}
+function integrate(to){
+ const dt=Math.max(0,to-state.t);
+ state.areaN+=totalN()*dt;
+ state.areaQ+=state.queue.length*dt;
+ state.areaBusy+=busyCount()*dt;
+ state.t=to;
+}
+function processOne(){
+ const e=nextEvent();
+ if(!e||!Number.isFinite(e.time)||e.time>state.duration){
+  integrate(state.duration);running=false;stopTimer();render();return false;
+ }
+ integrate(e.time);
+ if(e.type==="arrival"){
+  state.arrivals++;
+  const cust={id:state.arrivals,arrival:state.t,serviceStart:null,serviceTime:null,scheduledEnd:null,departureTime:null,waitingTime:null,timeInSystem:null,server:null};
+  state.customers.push(cust);
+  const free=state.servers.findIndex(x=>x===null);
+  if(free>=0)startService(cust,free);else state.queue.push(cust);
+  state.nextArrival=state.t+exp(params().lambda);
+  recordEvent("arrival",cust.id,cust.server);
+ }else{
+  const c=e.customer;
+  c.departureTime=state.t;
+  c.waitingTime=c.serviceStart-c.arrival;
+  c.timeInSystem=state.t-c.arrival;
+  state.served++;
+  state.waitSum+=c.waitingTime;
+  state.systemTimeSum+=c.timeInSystem;
+  state.servers[e.server]=null;
+  if(state.queue.length)startService(state.queue.shift(),e.server);
+  recordEvent("departure",c.id,e.server+1);
+ }
+ state.history.push({t:state.t,n:totalN()});
+ if(state.history.length>5000)state.history=state.history.filter((_,i)=>i%2===0);
+ return true;
+}
+function tick(){
+ if(!running)return;
+ const steps=Math.max(1,Math.round(3*speed));
+ for(let i=0;i<steps&&running;i++){if(!processOne())break}
+ render();
+ if(state.t>=state.duration){running=false;stopTimer();updateControls()}
+}
+function stopTimer(){if(timer){clearInterval(timer);timer=null}updateControls()}
+function start(){
+ if(running)return;
+ if(!state||state.t>=state.duration)resetState();
+ running=true;
+ speed=Number($('speed').value)||1;
+ stopTimer(); // clear any stale interval before scheduling the new one
+ running=true;
+ timer=setInterval(tick,100);
+ updateControls();
+}
+function pause(){running=false;stopTimer();render();updateControls()}
+function render(){
+ if(!state)return;
+ $('clock').textContent=fmt(state.t,2);
+ $('arrivals').textContent=state.arrivals;
+ $('served').textContent=state.served;
+ $('inSystem').textContent=totalN();
+ $('waiting').textContent=state.queue.length;
+ $('busy').textContent=busyCount();
+ $('meanWait').textContent=state.served?fmt(state.waitSum/state.served,3):"0.000";
+ $('observedUtil').textContent=state.t>0?fmt(100*state.areaBusy/(params().c*state.t),1)+"%":"0%";
+ $('modelName').textContent="M/M/"+params().c;
+ const p=params(),th=theoretical(p),stable=th.stable;
+ setStatus($('stability'),stable,stable?"Stable: steady-state measures exist":"Unstable or invalid: no steady-state measures");
+ $('stabilityText').textContent=stable?`λ = ${fmt(p.lambda,4)}, total capacity cμ = ${fmt(p.c*p.mu,4)} customers/minute. Stability condition is satisfied.`:`λ = ${fmt(p.lambda,4)}, total capacity cμ = ${fmt(p.c*p.mu,4)} customers/minute. Require λ < cμ and μ > 0.`;
+ $('queueVisual').innerHTML=state.queue.length?state.queue.slice(0,45).map(()=>'<span class="person" title="Waiting customer">●</span>').join('')+(state.queue.length>45?`<span class="small">+${state.queue.length-45} more</span>`:''):'<span class="small">No customers waiting</span>';
+ $('serverVisual').innerHTML=state.servers.map((s,i)=>`<div class="server ${s?'busy':''}"><strong>Server ${i+1}</strong><div class="person ${s?'serving':''}">${s?'●':'—'}</div><span class="pill">${s?'BUSY':'IDLE'}</span>${s?`<div class="small">Customer #${s.id}</div>`:''}</div>`).join('');
+ const avgL=state.t?state.areaN/state.t:0,avgQ=state.t?state.areaQ/state.t:0;
+ $('transL').textContent=fmt(avgL,3);
+ $('transLq').textContent=fmt(avgQ,3);
+ $('transW').textContent=state.served?fmt(state.systemTimeSum/state.served,3):"—";
+ $('transWq').textContent=state.served?fmt(state.waitSum/state.served,3):"—";
+ drawTimeline();renderTheory(p,th);drawDistribution(p,th);
+}
+function metric(k,v,u=""){return `<div class="metric"><div class="k">${k}</div><div class="v">${v}</div><div class="u">${u}</div></div>`}
+function renderTheory(p,t){
+ setStatus($('theoryStatus'),t.stable,t.stable?"Stable model: theoretical steady-state measures are valid":"No steady state: λ must be less than cμ, with μ > 0.");
+ if(!t.stable){$('theoryMetrics').innerHTML=metric("Traffic intensity",fmt(t.rho,3),"ρ = λ/(cμ)")+metric("Total capacity",fmt(p.c*p.mu,4),"customers/minute")+metric("Arrival rate",fmt(p.lambda,4),"customers/minute")+metric("Steady-state results","Not valid","Unstable / invalid");return}
+ $('theoryMetrics').innerHTML=metric("Utilisation",fmt(t.rho*100,2)+"%","per server")+metric("P₀",fmt(t.p0,4),"empty system")+metric("P(wait)",fmt(t.pwait,4),"Erlang C")+metric("Lq",fmt(t.Lq,4),"customers")+metric("L",fmt(t.L,4),"customers")+metric("Wq",fmt(t.Wq,3),"minutes")+metric("W",fmt(t.W,3),"minutes")+metric("Total capacity",fmt(p.c*p.mu,4),"customers/minute");
+}
+function canvasSetup(id){const c=$(id),ctx=c.getContext('2d');const w=c.width,h=c.height;ctx.clearRect(0,0,w,h);return {c,ctx,w,h}}
+function drawTimeline(){
+ const {ctx,w,h}=canvasSetup('timeline'),data=state.history;if(!data.length)return;
+ const maxT=Math.max(1,state.t),maxN=Math.max(5,...data.map(x=>x.n));
+ ctx.strokeStyle="#dce4ee";ctx.lineWidth=1;
+ for(let i=0;i<=5;i++){let y=20+(h-50)*i/5;ctx.beginPath();ctx.moveTo(48,y);ctx.lineTo(w-15,y);ctx.stroke();ctx.fillStyle="#64748b";ctx.font="12px sans-serif";ctx.fillText(String(Math.round(maxN*(5-i)/5)),8,y+4)}
+ ctx.strokeStyle="#2563eb";ctx.lineWidth=2;ctx.beginPath();
+ data.forEach((d,i)=>{let x=48+(w-70)*d.t/maxT,y=h-30-(h-55)*d.n/maxN;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});ctx.stroke();
+ ctx.fillStyle="#475569";ctx.fillText("Simulation time (minutes)",w/2-70,h-7);
+}
+function drawDistribution(p,t){
+ const {ctx,w,h}=canvasSetup('distribution');
+ if(!t.stable){ctx.fillStyle="#64748b";ctx.font="16px sans-serif";ctx.fillText("Steady-state distribution unavailable",20,40);return}
+ const probs=[];
+ for(let n=0;n<30;n++){
+  let pr;
+  if(p.c===1)pr=(1-t.rho)*Math.pow(t.rho,n);
+  else if(n<p.c){let a=p.lambda/p.mu,term=Math.pow(a,n);for(let j=2;j<=n;j++)term/=j;pr=t.p0*term}
+  else {let a=p.lambda/p.mu,fac=1;for(let j=2;j<=p.c;j++)fac*=j;pr=t.p0*(Math.pow(a,p.c)/fac)*Math.pow(t.rho,n-p.c)}
+  probs.push(Math.max(0,pr));
+ }
+ const max=Math.max(.05,...probs);ctx.strokeStyle="#dce4ee";for(let i=0;i<5;i++){let y=15+(h-45)*i/4;ctx.beginPath();ctx.moveTo(35,y);ctx.lineTo(w-10,y);ctx.stroke()}
+ const bw=(w-55)/probs.length;
+ probs.forEach((v,i)=>{let bh=(h-50)*v/max;ctx.fillStyle="#0f9d91";ctx.fillRect(38+i*bw,h-30-bh,Math.max(2,bw-3),bh)});
+ ctx.fillStyle="#64748b";ctx.font="11px sans-serif";ctx.fillText("Customers in system (n)",w/2-55,h-7);
+}
+function calculateCosts(){
+ const p=params(),sc=Math.max(0,Number($('serverCost').value)||0),wc=Math.max(0,Number($('waitCost').value)||0),tbody=$('costTable').querySelector('tbody');
+ tbody.innerHTML="";let best=null,rows=[];
+ for(let c=1;c<=6;c++){
+  const q=theoretical({...p,c});
+  if(!q.stable){rows.push({c,stable:false});continue}
+  const server=c*sc,wait=q.Lq*wc,total=server+wait;rows.push({c,stable:true,rho:q.rho,server,wait,total,Lq:q.Lq});
+  if(!best||total<best.total)best={c,total};
+ }
+ rows.forEach(r=>{let tr=document.createElement('tr');tr.innerHTML=r.stable?`<td>${r.c}</td><td>${fmt(r.rho*100,1)}%</td><td>${fmt(r.server,2)}</td><td>${fmt(r.wait,2)}</td><td><strong>${fmt(r.total,2)}</strong></td>`:`<td>${r.c}</td><td colspan="4" style="color:#b42318;text-align:left">Unstable — not feasible</td>`;tbody.appendChild(tr)});
+ $('optimal').textContent=best?`Lowest-cost stable option: ${best.c} server(s), total cost ${fmt(best.total,2)} per minute under the entered cost assumptions.`:"No stable configuration among the options.";
+ drawCost(rows);
+}
+function drawCost(rows){
+ const {ctx,w,h}=canvasSetup('costChart'),valid=rows.filter(r=>r.stable);if(!valid.length)return;
+ const max=Math.max(1,...valid.map(r=>r.total)),base=h-35,top=20,barW=65,gap=35;
+ ctx.strokeStyle="#dce4ee";for(let i=0;i<5;i++){let y=top+(base-top)*i/4;ctx.beginPath();ctx.moveTo(40,y);ctx.lineTo(w-15,y);ctx.stroke()}
+ valid.forEach((r,i)=>{let x=65+i*(barW+gap),totalH=(base-top)*r.total/max,serverH=(base-top)*r.server/max,waitH=(base-top)*r.wait/max;ctx.fillStyle="#2563eb";ctx.fillRect(x,base-serverH,barW,serverH);ctx.fillStyle="#0f9d91";ctx.fillRect(x,base-serverH-waitH,barW,waitH);ctx.fillStyle="#475569";ctx.font="12px sans-serif";ctx.fillText("c="+r.c,x+15,h-12);ctx.fillText(fmt(r.total,1),x+8,base-totalH-6)});
+ ctx.fillStyle="#2563eb";ctx.fillRect(w-220,15,10,10);ctx.fillStyle="#475569";ctx.fillText("Server cost",w-205,24);ctx.fillStyle="#0f9d91";ctx.fillRect(w-115,15,10,10);ctx.fillStyle="#475569";ctx.fillText("Waiting cost",w-100,24);
+}
+function csvCell(value){
+ const v=value===null||value===undefined?"":String(value);
+ return '"'+v.replace(/"/g,'""')+'"';
+}
+function downloadCSV(filename,headers,rows){
+ const csv=[headers,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');
+ const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function fileStamp(){return new Date().toISOString().replace(/[:.]/g,'-')}
+function downloadCustomers(){
+ if(!state)return;
+ const p=params();
+ const headers=['customer_id','arrival_time_min','service_start_time_min','service_completion_time_min','waiting_time_min','service_time_min','time_in_system_min','server_id','customer_status','arrival_rate_per_min','service_rate_per_server_per_min','number_of_servers','simulation_duration_min'];
+ const rows=state.customers.map(c=>{
+  const status=c.departureTime!==null?'completed':(c.serviceStart!==null?'in_service_at_end':'waiting_at_end');
+  const accruedWait=c.waitingTime!==null?c.waitingTime:(c.serviceStart!==null?c.serviceStart-c.arrival:state.t-c.arrival);
+  const accruedSystem=c.timeInSystem!==null?c.timeInSystem:state.t-c.arrival;
+  return [c.id,fmt(c.arrival,6),c.serviceStart===null?'':fmt(c.serviceStart,6),c.departureTime===null?'':fmt(c.departureTime,6),fmt(accruedWait,6),c.serviceTime===null?'':fmt(c.serviceTime,6),fmt(accruedSystem,6),c.server||'',status,fmt(p.lambda,8),fmt(p.mu,8),p.c,fmt(state.duration,3)];
+ });
+ downloadCSV('queuing_customers_'+fileStamp()+'.csv',headers,rows);
+}
+function downloadEvents(){
+ if(!state)return;
+ const headers=['event_sequence','event_type','clock_time_min','customer_id','server_id','queue_length_after_event','customers_in_system_after_event','busy_servers_after_event'];
+ const rows=state.eventLog.map(e=>[e.event_sequence,e.event_type,fmt(e.clock_time_min,6),e.customer_id,e.server_id,e.queue_length_after_event,e.customers_in_system_after_event,e.busy_servers_after_event]);
+ downloadCSV('queuing_event_log_'+fileStamp()+'.csv',headers,rows);
+}
+function syncRange(id,range){
+ $(id).addEventListener('input',()=>{$(range).value=$(id).value;parameterChanged()});
+ $(range).addEventListener('input',()=>{$(id).value=$(range).value;parameterChanged()});
+}
+function parameterChanged(){pause();resetState();calculateCosts()}
+function loadExperiment(n){
+ const configs={
+  1:[2/60,10/60,1],
+  2:[8/60,10/60,1],
+  3:[8/60,5/60,1],
+  4:[8/60,5/60,2],
+  5:[4/60,6/60,2],
+  6:[5/60,8/60,2]
+ };
+ const [l,m,c]=configs[n];
+ $('lambda').value=l.toFixed(7);$('lambdaRange').value=l;
+ $('mu').value=m.toFixed(7);$('muRange').value=m;
+ $('servers').value=String(c);
+ $('duration').value=n===5?18000:6000;
+ parameterChanged();
+ document.querySelector('[data-tab="lab"]').click();
+}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));
+ document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===b.dataset.tab));
+ if(b.dataset.tab==='economics')calculateCosts();
+}));
+syncRange('lambda','lambdaRange');syncRange('mu','muRange');
+$('servers').addEventListener('change',parameterChanged);
+$('start').addEventListener('click',start);$('pause').addEventListener('click',pause);
+$('reset').addEventListener('click',()=>{pause();resetState()});
+$('step').addEventListener('click',()=>{pause();if(!state||state.t>=state.duration)resetState();processOne();render();updateControls()});
+$('speed').addEventListener('change',()=>{speed=Number($('speed').value)||1});
+$('calcCosts').addEventListener('click',calculateCosts);
+$('downloadCustomers').addEventListener('click',downloadCustomers);
+$('downloadEvents').addEventListener('click',downloadEvents);
+['duration','seed'].forEach(id=>$(id).addEventListener('change',()=>{pause();resetState()}));
+resetState();calculateCosts();
+window.loadExperiment=loadExperiment;
+})();
+</script>
+</body>
+</html>
