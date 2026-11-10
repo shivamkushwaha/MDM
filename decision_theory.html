@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision Theory Solver</title>
+<style>
+  :root { --accent: #A5300F; --ink: #222222; --tint: #F3E9E6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: var(--ink); font-family: Georgia, "Times New Roman", serif; line-height: 1.5; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { color: var(--accent); margin: 0 0 4px; font-size: 1.9rem; }
+  h2 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 4px; margin: 40px 0 12px; font-size: 1.35rem; }
+  h3 { margin: 26px 0 6px; font-size: 1.1rem; }
+  p { margin: 6px 0 10px; }
+  .note { font-size: 0.93rem; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; margin: 8px 0 12px; }
+  th, td { border: 1px solid #fff; padding: 7px 12px; text-align: right; white-space: nowrap; }
+  th { background: var(--accent); color: #fff; text-align: left; }
+  td { background: var(--tint); }
+  td.name { text-align: left; font-weight: bold; }
+  tr.win td { outline: 2px solid var(--accent); outline-offset: -2px; font-weight: bold; }
+  tr.win td.name::after { content: "  ★"; color: var(--accent); }
+  input[type=text], input[type=number] { font: inherit; color: var(--ink); border: 1px solid var(--accent); background: #fff; padding: 4px 6px; border-radius: 3px; }
+  input[type=number] { width: 84px; text-align: right; }
+  input.nm { width: 120px; font-weight: bold; }
+  th input.nm { border-color: #fff; }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--accent); background: #fff; color: var(--accent); padding: 6px 12px; border-radius: 3px; margin: 2px 4px 2px 0; }
+  button:hover { background: var(--accent); color: #fff; }
+  button.x { padding: 0 7px; margin: 0 0 0 4px; }
+  th button.x { border-color: #fff; }
+  .controls { margin: 10px 0; }
+  .controls label { margin-right: 16px; }
+  .result { background: var(--tint); border-left: 5px solid var(--accent); padding: 8px 14px; margin: 8px 0 4px; }
+  .result b { color: var(--accent); }
+  .slider { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 8px 0; }
+  .slider input[type=range] { width: 320px; max-width: 100%; accent-color: var(--accent); }
+  .big { font-size: 1.3rem; color: var(--accent); font-weight: bold; }
+  .formula { font-style: italic; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Decision Theory Solver</h1>
+  <p>Edit the payoff matrix below. Every criterion and the value of perfect information update instantly. The matrix can grow up to 10 decision alternatives by 10 chance events.</p>
+
+  <h2>1. Payoff Matrix</h2>
+  <div class="controls">
+    <label><input type="radio" name="mode" value="profit" checked> Payoffs are profits (higher is better)</label>
+    <label><input type="radio" name="mode" value="cost"> Payoffs are costs (lower is better)</label>
+  </div>
+  <div class="scroll"><table id="editor"></table></div>
+  <div class="controls">
+    <button id="addAlt">Add alternative</button>
+    <button id="addState">Add chance event</button>
+    <button id="eqProb">Equal probabilities</button>
+    <button id="normProb">Normalize probabilities</button>
+    <button id="reset">Load sample</button>
+    <button id="clear">Clear payoffs</button>
+  </div>
+  <p class="note" id="probNote"></p>
+
+  <h2>2. Summary of Recommendations</h2>
+  <div class="scroll" id="summary"></div>
+
+  <h2>3. Decision Making Under Uncertainty</h2>
+  <p class="note">These criteria ignore probabilities. The starred row is the recommended alternative.</p>
+
+  <h3 id="hOpt"></h3>
+  <p id="pOpt"></p>
+  <div class="scroll" id="optimist"></div>
+
+  <h3 id="hPes"></h3>
+  <p id="pPes"></p>
+  <div class="scroll" id="pessimist"></div>
+
+  <h3>Laplace (equal likelihood)</h3>
+  <p>Treat every chance event as equally likely and take the simple average of each row.</p>
+  <div class="scroll" id="laplace"></div>
+
+  <h3>Hurwicz (criterion of realism)</h3>
+  <p>Blend the best and the worst payoff of each alternative using the coefficient of optimism alpha. <span class="formula">Hurwicz value = alpha × best + (1 − alpha) × worst</span></p>
+  <div class="slider">
+    <span>Pessimist (0)</span>
+    <input type="range" id="alpha" min="0" max="1" step="0.01" value="0.5">
+    <span>Optimist (1)</span>
+    <span class="big">alpha = <span id="alphaVal">0.50</span></span>
+  </div>
+  <div class="scroll" id="hurwicz"></div>
+
+  <h3>Minimax Regret (Savage)</h3>
+  <p>Regret is the gap between a payoff and the best payoff available under the same chance event. Choose the alternative whose maximum regret is smallest.</p>
+  <div class="scroll" id="regret"></div>
+
+  <h2>4. Decision Making Under Risk</h2>
+  <h3>Weighted Payoff: Expected Monetary Value (EMV)</h3>
+  <p>Each payoff is weighted by the probability of its chance event. <span class="formula">EMV = sum of (probability × payoff)</span></p>
+  <div class="scroll" id="emv"></div>
+
+  <h3>Expected Opportunity Loss (EOL)</h3>
+  <p>The same weighting applied to the regret table. The alternative with the smallest EOL is always the one with the best EMV.</p>
+  <div class="scroll" id="eol"></div>
+
+  <h2>5. Perfect Information and Its Value</h2>
+  <p>With perfect information the decision maker learns which chance event will occur before choosing, and so always picks the best alternative for that event.</p>
+  <div class="scroll" id="pi"></div>
+  <div id="piText"></div>
+</main>
+
+<script>
+(function () {
+  var MAX = 10, EPS = 1e-9;
+  var SAMPLE = {
+    alts: ["Bonds", "Stocks", "MFs"],
+    states: ["Growing", "Stable", "Declining"],
+    pay: [[40, 45, 5], [70, 30, -13], [53, 45, -5]],
+    probs: [0.5, 0.3, 0.2]
+  };
+  var S = { mode: "profit", alpha: 0.5 };
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function fmt(x) { var r = Math.round(x * 10000) / 10000; return (Object.is(r, -0) ? 0 : r).toString(); }
+  function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+  function load() {
+    S.alts = SAMPLE.alts.slice(); S.states = SAMPLE.states.slice();
+    S.pay = SAMPLE.pay.map(function (r) { return r.slice(); }); S.probs = SAMPLE.probs.slice();
+  }
+  function isProfit() { return S.mode === "profit"; }
+  function best(a) { return isProfit() ? Math.max.apply(null, a) : Math.min.apply(null, a); }
+  function worst(a) { return isProfit() ? Math.min.apply(null, a) : Math.max.apply(null, a); }
+  function pick(vals, wantMax) {
+    var t = wantMax ? Math.max.apply(null, vals) : Math.min.apply(null, vals), w = [];
+    vals.forEach(function (v, i) { if (Math.abs(v - t) < EPS) w.push(i); });
+    return { value: t, idx: w };
+  }
+  function names(idx) { return idx.map(function (i) { return S.alts[i]; }).join(", "); }
+  function col(j) { return S.pay.map(function (r) { return r[j]; }); }
+  function probsUsed() {
+    var s = S.probs.reduce(function (a, b) { return a + b; }, 0), n = S.states.length;
+    if (s <= EPS) return S.probs.map(function () { return 1 / n; });
+    return S.probs.map(function (p) { return p / s; });
+  }
+
+  /* ---------- editor ---------- */
+  function renderEditor() {
+    var h = "<tr><th>Alternatives</th>";
+    S.states.forEach(function (s, j) {
+      h += '<th><input class="nm" type="text" data-k="state" data-j="' + j + '" value="' + esc(s) + '">' +
+        (S.states.length > 2 ? '<button class="x" title="Remove chance event" data-del="state" data-j="' + j + '">×</button>' : "") + "</th>";
+    });
+    h += "</tr>";
+    S.alts.forEach(function (a, i) {
+      h += '<tr><td class="name"><input class="nm" type="text" data-k="alt" data-i="' + i + '" value="' + esc(a) + '">' +
+        (S.alts.length > 2 ? '<button class="x" title="Remove alternative" data-del="alt" data-i="' + i + '">×</button>' : "") + "</td>";
+      S.states.forEach(function (s, j) {
+        h += '<td><input type="number" step="any" data-k="pay" data-i="' + i + '" data-j="' + j + '" value="' + S.pay[i][j] + '"></td>';
+      });
+      h += "</tr>";
+    });
+    h += '<tr><td class="name">Probability</td>';
+    S.states.forEach(function (s, j) {
+      h += '<td><input type="number" step="0.01" min="0" data-k="prob" data-j="' + j + '" value="' + fmt(S.probs[j]) + '"></td>';
+    });
+    h += "</tr>";
+    $("editor").innerHTML = h;
+  }
+
+  $("editor").addEventListener("input", function (e) {
+    var t = e.target, k = t.dataset.k, i = +t.dataset.i, j = +t.dataset.j;
+    if (k === "alt") S.alts[i] = t.value;
+    else if (k === "state") S.states[j] = t.value;
+    else if (k === "pay") S.pay[i][j] = num(t.value);
+    else if (k === "prob") S.probs[j] = Math.max(0, num(t.value));
+    compute();
+  });
+  $("editor").addEventListener("click", function (e) {
+    var d = e.target.dataset.del; if (!d) return;
+    if (d === "alt") { var i = +e.target.dataset.i; S.alts.splice(i, 1); S.pay.splice(i, 1); }
+    else { var j = +e.target.dataset.j; S.states.splice(j, 1); S.probs.splice(j, 1); S.pay.forEach(function (r) { r.splice(j, 1); }); }
+    renderEditor(); compute();
+  });
+  $("addAlt").onclick = function () {
+    if (S.alts.length >= MAX) return alertMax();
+    S.alts.push("Alternative " + (S.alts.length + 1)); S.pay.push(S.states.map(function () { return 0; }));
+    renderEditor(); compute();
+  };
+  $("addState").onclick = function () {
+    if (S.states.length >= MAX) return alertMax();
+    S.states.push("Event " + (S.states.length + 1)); S.probs.push(0); S.pay.forEach(function (r) { r.push(0); });
+    renderEditor(); compute();
+  };
+  function alertMax() { $("probNote").textContent = "The matrix is limited to 10 by 10."; }
+  $("eqProb").onclick = function () { var n = S.states.length; S.probs = S.states.map(function () { return 1 / n; }); renderEditor(); compute(); };
+  $("normProb").onclick = function () { S.probs = probsUsed(); renderEditor(); compute(); };
+  $("reset").onclick = function () { load(); renderEditor(); compute(); };
+  $("clear").onclick = function () { S.pay = S.pay.map(function (r) { return r.map(function () { return 0; }); }); renderEditor(); compute(); };
+  document.querySelectorAll("input[name=mode]").forEach(function (r) {
+    r.onchange = function () { S.mode = r.value; compute(); };
+  });
+  $("alpha").addEventListener("input", function () { S.alpha = +this.value; compute(); });
+
+  /* ---------- output helpers ---------- */
+  function table(headers, rows, winIdx) {
+    var h = "<table><tr>" + headers.map(function (x) { return "<th>" + esc(x) + "</th>"; }).join("") + "</tr>";
+    rows.forEach(function (r, i) {
+      h += '<tr class="' + (winIdx && winIdx.indexOf(i) >= 0 ? "win" : "") + '">' +
+        r.map(function (c, k) { return "<td" + (k === 0 ? ' class="name"' : "") + ">" + (typeof c === "number" ? fmt(c) : esc(c)) + "</td>"; }).join("") + "</tr>";
+    });
+    return h + "</table>";
+  }
+  function verdict(label, w) {
+    return '<div class="result">' + label + ": choose <b>" + esc(names(w.idx)) + "</b> with value <b>" + fmt(w.value) + "</b>" +
+      (w.idx.length > 1 ? " (tie)" : "") + "</div>";
+  }
+
+  /* ---------- compute ---------- */
+  function compute() {
+    var P = isProfit(), m = S.alts.length, n = S.states.length, a = S.alpha;
+    var p = probsUsed(), sum = S.probs.reduce(function (x, y) { return x + y; }, 0);
+    $("probNote").textContent = sum <= EPS
+      ? "All probabilities are zero, so equal probabilities are used for the risk calculations."
+      : (Math.abs(sum - 1) > 1e-6
+        ? "Probabilities sum to " + fmt(sum) + ", not 1. The risk calculations use normalized values: " + p.map(fmt).join(", ") + "."
+        : "Probabilities sum to 1.");
+
+    var rb = S.pay.map(best), rw = S.pay.map(worst);
+    var optName = P ? "Maximax (optimistic)" : "Minimin (optimistic)";
+    var pesName = P ? "Maximin (pessimistic)" : "Minimax (pessimistic)";
+    var bestWord = P ? "maximum" : "minimum", worstWord = P ? "minimum" : "maximum";
+
+    /* optimist */
+    var wOpt = pick(rb, P);
+    $("hOpt").textContent = optName;
+    $("pOpt").textContent = "Take the " + bestWord + " payoff of each alternative, then choose the " + (P ? "largest" : "smallest") + " of these.";
+    $("optimist").innerHTML = table(["Alternative", "Row " + bestWord], S.alts.map(function (x, i) { return [x, rb[i]]; }), wOpt.idx) + verdict(optName, wOpt);
+
+    /* pessimist */
+    var wPes = pick(rw, P);
+    $("hPes").textContent = pesName;
+    $("pPes").textContent = "Take the " + worstWord + " payoff of each alternative, then choose the " + (P ? "largest" : "smallest") + " of these.";
+    $("pessimist").innerHTML = table(["Alternative", "Row " + worstWord], S.alts.map(function (x, i) { return [x, rw[i]]; }), wPes.idx) + verdict(pesName, wPes);
+
+    /* laplace */
+    var lap = S.pay.map(function (r) { return r.reduce(function (x, y) { return x + y; }, 0) / n; });
+    var wLap = pick(lap, P);
+    $("laplace").innerHTML = table(["Alternative", "Row sum", "Average"], S.alts.map(function (x, i) { return [x, lap[i] * n, lap[i]]; }), wLap.idx) + verdict("Laplace", wLap);
+
+    /* hurwicz */
+    $("alphaVal").textContent = a.toFixed(2);
+    var hur = rb.map(function (b, i) { return a * b + (1 - a) * rw[i]; });
+    var wHur = pick(hur, P);
+    $("hurwicz").innerHTML = table(["Alternative", "Best", "Worst", "Working", "Hurwicz value"], S.alts.map(function (x, i) {
+      return [x, rb[i], rw[i], a.toFixed(2) + " × (" + fmt(rb[i]) + ") + " + (1 - a).toFixed(2) + " × (" + fmt(rw[i]) + ")", hur[i]];
+    }), wHur.idx) + verdict("Hurwicz at alpha = " + a.toFixed(2), wHur);
+
+    /* regret */
+    var cb = S.states.map(function (s, j) { return best(col(j)); });
+    var reg = S.pay.map(function (r) { return r.map(function (v, j) { return P ? cb[j] - v : v - cb[j]; }); });
+    var maxReg = reg.map(function (r) { return Math.max.apply(null, r); });
+    var wReg = pick(maxReg, false);
+    $("regret").innerHTML = "<p class='note'>Best payoff under each chance event: " +
+      S.states.map(function (s, j) { return esc(s) + " = " + fmt(cb[j]); }).join(", ") + "</p>" +
+      table(["Regret table"].concat(S.states, ["Maximum regret"]), S.alts.map(function (x, i) { return [x].concat(reg[i], [maxReg[i]]); }), wReg.idx) +
+      verdict("Minimax regret", wReg);
+
+    /* EMV */
+    var emv = S.pay.map(function (r) { return r.reduce(function (x, v, j) { return x + p[j] * v; }, 0); });
+    var wEmv = pick(emv, P);
+    $("emv").innerHTML = table(["Alternative", "Working", "EMV"], S.alts.map(function (x, i) {
+      return [x, S.pay[i].map(function (v, j) { return fmt(p[j]) + " × (" + fmt(v) + ")"; }).join(" + "), emv[i]];
+    }), wEmv.idx) + verdict("EMV", wEmv);
+
+    /* EOL */
+    var eol = reg.map(function (r) { return r.reduce(function (x, v, j) { return x + p[j] * v; }, 0); });
+    var wEol = pick(eol, false);
+    $("eol").innerHTML = table(["Alternative", "Working", "EOL"], S.alts.map(function (x, i) {
+      return [x, reg[i].map(function (v, j) { return fmt(p[j]) + " × " + fmt(v); }).join(" + "), eol[i]];
+    }), wEol.idx) + verdict("Minimum EOL", wEol);
+
+    /* perfect information */
+    var evwpi = cb.reduce(function (x, v, j) { return x + p[j] * v; }, 0);
+    var evpi = Math.abs(evwpi - wEmv.value);
+    $("pi").innerHTML = table(["Chance event", "Probability", "Best alternative", "Best payoff", "Probability × payoff"],
+      S.states.map(function (s, j) {
+        var w = pick(col(j), P);
+        return [s, p[j], names(w.idx), cb[j], p[j] * cb[j]];
+      }));
+    $("piText").innerHTML =
+      '<div class="result">Expected value with perfect information (EVwPI) = <b>' + fmt(evwpi) + "</b></div>" +
+      '<div class="result">Expected value without perfect information = best EMV = <b>' + fmt(wEmv.value) + "</b> (" + esc(names(wEmv.idx)) + ")</div>" +
+      '<div class="result">Expected value of perfect information (EVPI) = ' +
+        (P ? fmt(evwpi) + " − " + fmt(wEmv.value) : fmt(wEmv.value) + " − " + fmt(evwpi)) + ' = <b class="big">' + fmt(evpi) + "</b></div>" +
+      "<p>Interpretation: EVPI is the most the decision maker should pay for a perfect forecast of the chance event. Any forecast, survey or consultant costing more than " + fmt(evpi) +
+      " is not worth buying. As a check, EVPI equals the minimum EOL (" + fmt(wEol.value) + ").</p>";
+
+    /* summary */
+    var rows = [
+      [optName, names(wOpt.idx), wOpt.value],
+      [pesName, names(wPes.idx), wPes.value],
+      ["Laplace", names(wLap.idx), wLap.value],
+      ["Hurwicz (alpha = " + a.toFixed(2) + ")", names(wHur.idx), wHur.value],
+      ["Minimax regret", names(wReg.idx), wReg.value],
+      ["Weighted payoff (EMV)", names(wEmv.idx), wEmv.value],
+      ["Expected opportunity loss", names(wEol.idx), wEol.value],
+      ["EVPI", "", evpi]
+    ];
+    $("summary").innerHTML = table(["Criterion", "Recommended alternative", "Value"], rows);
+  }
+
+  load(); renderEditor(); compute();
+})();
+</script>
+</body>
+</html>

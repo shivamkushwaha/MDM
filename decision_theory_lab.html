@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Decision Theory Lab | Payoff Matrix & EVPI</title>
+<style>
+  :root {
+    --ink:#182536; --muted:#64748b; --line:#dbe3ec; --soft:#f4f7fb;
+    --navy:#16324f; --blue:#2563eb; --teal:#0f766e; --green:#166534;
+    --amber:#a16207; --red:#b91c1c; --white:#fff;
+    --shadow:0 7px 22px rgba(15,35,60,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#f5f7fa;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.45}
+  .app{max-width:1440px;margin:0 auto;padding:26px 24px 52px}
+  header{background:linear-gradient(115deg,#142e49,#214c70);color:white;border-radius:18px;padding:26px 30px;box-shadow:var(--shadow);margin-bottom:20px}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#b9d9ed;margin-bottom:8px}
+  h1{font-size:clamp(25px,3vw,36px);line-height:1.12;margin:0 0 8px;font-weight:800;letter-spacing:-.035em}
+  header p{margin:0;color:#d8e7f2;max-width:900px;font-size:14px}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+  .header-tools{display:flex;gap:8px;flex-wrap:wrap}
+  .header-tools button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.24);color:white}
+  .header-tools button:hover{background:rgba(255,255,255,.2)}
+  .section{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:21px 22px;margin:16px 0;box-shadow:var(--shadow)}
+  .section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:15px}
+  h2{font-size:18px;margin:0;color:#172b42;letter-spacing:-.02em}
+  h3{font-size:14px;margin:0 0 10px;color:#233b54}
+  .sub{font-size:12px;color:var(--muted);margin-top:4px}
+  .eyebrow-dark{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:4px}
+  .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .field{display:flex;flex-direction:column;gap:5px;min-width:0}
+  label{font-size:11px;color:#526174;font-weight:750}
+  input,select,textarea{font:inherit;color:var(--ink)}
+  input[type="text"],input[type="number"],select{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px 10px;background:white;min-width:0;outline:none}
+  input:focus,select:focus{border-color:#4786c8;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+  input[type="number"]{font-variant-numeric:tabular-nums}
+  button{font:inherit;font-size:12px;font-weight:750;border-radius:8px;border:1px solid #cbd5e1;background:white;color:#24364b;padding:9px 12px;cursor:pointer;transition:.15s ease}
+  button:hover{background:#f1f5f9;border-color:#9fb0c2}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .btn-primary{background:var(--navy);color:white;border-color:var(--navy)}
+  .btn-primary:hover{background:#244b70;border-color:#244b70}
+  .btn-teal{background:#e6f5f2;color:#0d625b;border-color:#a8d8d0}
+  .btn-danger{color:#a83232;background:#fff7f7;border-color:#f0c9c9}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .matrix-scroll,.table-scroll{overflow:auto;border:1px solid var(--line);border-radius:10px;background:white}
+  table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px}
+  th,td{padding:9px 10px;border-right:1px solid #e5eaf0;border-bottom:1px solid #e5eaf0;text-align:center;white-space:nowrap}
+  tr:last-child td,tr:last-child th{border-bottom:0}
+  th:last-child,td:last-child{border-right:0}
+  thead th{background:#eff4f8;color:#30465e;font-weight:800}
+  .matrix-table{min-width:720px}
+  .matrix-table th:first-child{min-width:190px;text-align:left;position:sticky;left:0;z-index:2;background:#eff4f8}
+  .matrix-table td:first-child{position:sticky;left:0;background:#fff;z-index:1;text-align:left}
+  .matrix-table .meta-row th:first-child{background:#f8fafc}
+  .matrix-table .meta-row td{background:#fbfcfe}
+  .matrix-table input{font-size:12px;padding:7px 8px;min-width:88px;text-align:center}
+  .matrix-table .alt-name{min-width:170px;text-align:left}
+  .matrix-table .state-name{min-width:128px;text-align:center}
+  .matrix-table .payoff-input{min-width:90px}
+  .meta-label{font-weight:800;color:#45576a}
+  .dimension-note{font-size:11px;color:var(--muted);margin-top:9px}
+  .statusline{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted)}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:#f1f5f9;padding:5px 9px;font-weight:700}
+  .dot{width:7px;height:7px;border-radius:50%;background:#64748b;display:inline-block}
+  .dot.good{background:#16a34a}.dot.warn{background:#d97706}
+  .alpha-wrap{display:flex;align-items:center;gap:12px}
+  input[type="range"]{width:100%;accent-color:#2563eb}
+  .alpha-number{width:82px!important}
+  .note{background:#f3f7fb;border-left:3px solid #6593bc;padding:10px 12px;border-radius:0 8px 8px 0;color:#43566b;font-size:12px;margin-top:12px}
+  .cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .metric-card{border:1px solid var(--line);background:#fbfdff;border-radius:11px;padding:14px;min-width:0}
+  .metric-label{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:#64748b;font-weight:850}
+  .metric-value{font-size:22px;font-weight:850;letter-spacing:-.03em;margin:5px 0 2px;font-variant-numeric:tabular-nums;color:#17334f;overflow-wrap:anywhere}
+  .metric-foot{font-size:11px;color:#64748b}
+  .result-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+  .decision-card{border:1px solid var(--line);border-radius:10px;padding:13px;background:white}
+  .decision-card.best{border-color:#9cc9bf;background:#f4fbf8}
+  .decision-card .criterion{font-weight:850;font-size:12px;color:#32465b}
+  .decision-card .winner{font-size:14px;font-weight:850;margin:8px 0 3px;color:#153b54}
+  .decision-card .score{font-size:11px;color:#64748b}
+  .decision-card .explain{font-size:11px;color:#64748b;margin-top:8px}
+  .winner-badge{display:inline-block;font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:#12604f;background:#dff4ed;border-radius:4px;padding:3px 6px;font-weight:850;margin-top:7px}
+  .result-table{min-width:920px}
+  .result-table th:first-child,.result-table td:first-child{text-align:left;position:sticky;left:0;background:white;z-index:1}
+  .result-table thead th:first-child{background:#eff4f8;z-index:2}
+  .best-cell{background:#eaf7f1!important;color:#145c45;font-weight:850}
+  .regret-table{min-width:560px}
+  .regret-table th:first-child,.regret-table td:first-child{text-align:left}
+  .pi-table{min-width:500px}
+  .pi-table td:last-child{font-weight:850;color:#17456a}
+  .formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#334b63;background:#f5f8fb;border:1px solid #e4eaf0;padding:8px 10px;border-radius:7px;display:inline-block;margin:3px 0}
+  .two-col{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
+  .keyline{font-size:12px;color:#526174;margin:7px 0}
+  .keyline strong{color:#1e344a}
+  .callout{border:1px solid #cfe4de;background:#f1faf7;border-radius:10px;padding:14px}
+  .callout h3{color:#145c4c;margin-bottom:6px}
+  .callout p{font-size:12px;color:#426256;margin:0}
+  .empty{color:#78889a;font-style:italic}
+  .footer{font-size:11px;color:#718096;text-align:center;padding:18px 0 4px}
+  .hidden{display:none!important}
+  @media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two-col{grid-template-columns:1fr}}
+  @media(max-width:620px){.app{padding:14px 10px 32px}header{padding:21px 18px}.section{padding:16px 13px}.grid{grid-template-columns:1fr 1fr}.cards{grid-template-columns:1fr 1fr}.result-grid{grid-template-columns:1fr}.section-heading{display:block}.toolbar{margin-top:12px}.metric-value{font-size:19px}}
+  @media print{body{background:white}.app{max-width:none;padding:0}header{background:white!important;color:#142e49;border:1px solid #9aa9b8;box-shadow:none}header p,.eyebrow{color:#42566b}.section{box-shadow:none;break-inside:avoid}.header-tools,.toolbar,.dimension-note{display:none!important}.matrix-scroll,.table-scroll{overflow:visible}.matrix-table th:first-child,.matrix-table td:first-child,.result-table th:first-child,.result-table td:first-child{position:static}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="header-row">
+      <div>
+        <div class="eyebrow">Interactive decision modelling</div>
+        <h1>Decision Theory Lab</h1>
+        <p>Edit the payoff matrix, change the decision alternatives or states of nature, and compare decision rules under uncertainty and risk. All calculations update automatically.</p>
+      </div>
+      <div class="header-tools">
+        <button id="resetBtn" title="Restore the original investment example">Reset example</button>
+        <button id="exportJsonBtn">Export scenario JSON</button>
+        <button id="importJsonBtn">Import scenario</button>
+        <button id="printBtn">Print / Save PDF</button>
+        <input type="file" id="importFile" accept=".json,application/json" class="hidden" />
+      </div>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="section-heading">
+      <div><div class="eyebrow-dark">01 · Problem definition</div><h2>Decision context and assumptions</h2><div class="sub">Set the objective and the unit used to report payoffs or costs.</div></div>
+    </div>
+    <div class="grid">
+      <div class="field" style="grid-column:span 2"><label for="problemTitle">Problem / case title</label><input id="problemTitle" type="text" value="Investment decision: Bonds, Stocks and Mutual Funds" /></div>
+      <div class="field"><label for="objective">Decision objective</label><select id="objective"><option value="max">Maximize payoff / profit</option><option value="min">Minimize cost</option></select></div>
+      <div class="field"><label for="unit">Payoff unit / currency</label><input id="unit" type="text" value="₹" /></div>
+    </div>
+    <div class="note" id="objectiveNote">For a payoff or profit problem, higher values are preferred. The criteria and regret calculations are oriented accordingly.</div>
+  </section>
+
+  <section class="section">
+    <div class="section-heading">
+      <div><div class="eyebrow-dark">02 · Editable input</div><h2>Payoff matrix</h2><div class="sub">Rows represent decision alternatives; columns represent possible states of nature. Enter positive or negative values.</div></div>
+      <div class="toolbar">
+        <button class="btn-teal" id="addAltBtn">＋ Add alternative</button>
+        <button id="removeAltBtn">− Remove alternative</button>
+        <button class="btn-teal" id="addStateBtn">＋ Add state</button>
+        <button id="removeStateBtn">− Remove state</button>
+      </div>
+    </div>
+    <div class="matrix-scroll" id="matrixWrap"></div>
+    <div class="dimension-note" id="dimensionNote"></div>
+    <div class="statusline" id="probabilityStatus"></div>
+    <div class="note"><strong>Probabilities</strong> are used for EMV and perfect-information calculations. <strong>Criterion weights</strong> are separate inputs used only by the weighted-average rule. Both sets of weights are normalized automatically when their totals are non-zero, so they do not have to add to exactly 100%.</div>
+  </section>
+
+  <section class="section">
+    <div class="section-heading">
+      <div><div class="eyebrow-dark">03 · Decision criteria</div><h2>Decision-rule settings</h2><div class="sub">Adjust the Hurwicz optimism coefficient. The other rules use the current matrix and the inputs above.</div></div>
+    </div>
+    <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(180px,240px)">
+      <div class="field"><label for="alphaRange">Hurwicz coefficient of optimism (α)</label><div class="alpha-wrap"><input type="range" id="alphaRange" min="0" max="1" step="0.05" value="0.6" /><span style="font-size:11px;color:#64748b">0 = pessimistic · 1 = optimistic</span></div></div>
+      <div class="field"><label for="alphaNumber">α value</label><input class="alpha-number" type="number" id="alphaNumber" min="0" max="1" step="0.05" value="0.6" /></div>
+    </div>
+    <div class="note"><strong>Hurwicz:</strong> for maximization, α × best payoff + (1 − α) × worst payoff. For cost minimization, the same expression is applied to the best (lowest) and worst (highest) costs, and the lowest Hurwicz value is selected.</div>
+  </section>
+
+  <section class="section">
+    <div class="section-heading"><div><div class="eyebrow-dark">04 · Results</div><h2>Decision analysis summary</h2><div class="sub">The preferred alternative under each rule is highlighted. Ties are retained rather than arbitrarily broken.</div></div></div>
+    <div class="cards" id="summaryCards"></div>
+    <h3 style="margin-top:20px">Recommended alternative by criterion</h3>
+    <div class="result-grid" id="recommendationCards"></div>
+    <h3 style="margin-top:22px">Alternative-wise criterion scores</h3>
+    <div class="table-scroll" id="scoreTableWrap"></div>
+    <div class="note"><strong>Maximax / Maximin</strong> use the best / worst outcome of each alternative. <strong>Minimax regret</strong> minimizes the largest opportunity loss. <strong>Laplace</strong> gives equal weight to all states. <strong>Weighted</strong> uses the editable criterion weights. <strong>EMV</strong> uses the probability inputs.</div>
+  </section>
+
+  <section class="section">
+    <div class="section-heading"><div><div class="eyebrow-dark">05 · Opportunity loss</div><h2>Regret (opportunity-loss) matrix</h2><div class="sub">Regret is the gap between the best outcome available in a state and the outcome from the selected alternative.</div></div></div>
+    <div class="table-scroll" id="regretTableWrap"></div>
+    <div class="sub" style="margin-top:8px">For maximization: regret = best payoff in that state − alternative payoff. For cost minimization: regret = alternative cost − lowest cost in that state. The minimax-regret rule chooses the smallest row maximum.</div>
+  </section>
+
+  <section class="section">
+    <div class="section-heading"><div><div class="eyebrow-dark">06 · Perfect information</div><h2>Expected value of perfect information (EVPI)</h2><div class="sub">Assumes the decision-maker learns the state of nature before choosing an alternative.</div></div></div>
+    <div class="two-col">
+      <div>
+        <div class="table-scroll" id="piTableWrap"></div>
+        <div class="sub" style="margin-top:8px">For each state, perfect information selects the best alternative for that state. The probability-weighted payoff (or cost) is then calculated across states.</div>
+      </div>
+      <div>
+        <div class="cards" style="grid-template-columns:1fr 1fr" id="piCards"></div>
+        <div class="callout" style="margin-top:12px" id="piInterpretation"></div>
+      </div>
+    </div>
+    <div class="note" style="margin-top:15px"><strong>For a maximization problem:</strong> EVPI = expected value with perfect information − best EMV without perfect information. <strong>For a cost-minimization problem:</strong> EVPI = best expected cost without information − expected cost with perfect information. EVPI is the maximum amount worth paying for perfect information.</div>
+  </section>
+
+  <section class="section">
+    <div class="section-heading"><div><div class="eyebrow-dark">07 · Formula guide</div><h2>How to interpret the criteria</h2></div></div>
+    <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+      <div><h3>Decision under uncertainty</h3>
+        <div class="keyline"><strong>Maximax:</strong> optimistic rule; choose the alternative with the best possible payoff.</div>
+        <div class="keyline"><strong>Maximin:</strong> conservative rule; choose the alternative with the best worst-case payoff.</div>
+        <div class="keyline"><strong>Minimax regret:</strong> choose the alternative whose maximum regret is smallest.</div>
+        <div class="keyline"><strong>Laplace:</strong> assume all states are equally likely and compare average outcomes.</div>
+        <div class="keyline"><strong>Hurwicz:</strong> combine best and worst outcomes using α.</div>
+      </div>
+      <div><h3>Decision under risk</h3>
+        <div class="keyline"><strong>Weighted criterion:</strong> use the user-entered state weights to calculate a weighted average.</div>
+        <div class="keyline"><strong>EMV:</strong> use the state probabilities to calculate expected payoff or expected cost.</div>
+        <div class="keyline"><strong>Expected value with perfect information:</strong> choose the best alternative separately in each state, then take the probability-weighted value.</div>
+        <div class="keyline"><strong>EVPI:</strong> the expected improvement from having perfect information before deciding.</div>
+      </div>
+    </div>
+  </section>
+  <div class="footer">Decision Theory Lab · Standalone interactive HTML · No internet connection or external library required</div>
+</div>
+<script>
+(() => {
+  'use strict';
+  const MAX_DIM = 10;
+  const defaultScenario = () => ({
+    title: 'Investment decision: Bonds, Stocks and Mutual Funds', objective: 'max', unit: '%', alpha: 0.6,
+    states: [
+      { name: 'Growing', prob: 0.20, weight: 0.20 },
+      { name: 'Stable', prob: 0.50, weight: 0.50 },
+      { name: 'Declining', prob: 0.30, weight: 0.30 }
+    ],
+    alternatives: [
+      { name: 'Bonds', values: [40, 45, 5] },
+      { name: 'Stocks', values: [70, 30, -13] },
+      { name: 'MFs', values: [53, 45, -5] }
+    ]
+  });
+  let data = defaultScenario();
+  const $ = id => document.getElementById(id);
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const num = value => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const fmt = value => Number.isFinite(value) ? value.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:2}) : '—';
+  const unit = () => $('unit').value.trim() || '';
+  const money = value => `${unit()}${fmt(value)}`;
+  const objective = () => $('objective').value;
+  const isMax = () => objective() === 'max';
+  const EPS = 1e-9;
+  const sum = arr => arr.reduce((a,b) => a + b, 0);
+  const normalize = arr => {
+    const s = sum(arr.map(v => Math.max(0, num(v))));
+    return s > EPS ? arr.map(v => Math.max(0, num(v)) / s) : null;
+  };
+  const getMatrix = () => data.alternatives.map(a => a.values.map(v => num(v)));
+  const names = () => data.alternatives.map((a,i) => a.name.trim() || `Alternative ${i+1}`);
+  const stateNames = () => data.states.map((s,j) => s.name.trim() || `State ${j+1}`);
+  const winners = (values, mode) => {
+    const valid = values.map((v,i) => ({v,i})).filter(x => Number.isFinite(x.v));
+    if (!valid.length) return [];
+    const target = mode === 'min' ? Math.min(...valid.map(x=>x.v)) : Math.max(...valid.map(x=>x.v));
+    return valid.filter(x => Math.abs(x.v-target) <= EPS * Math.max(1,Math.abs(target))).map(x=>x.i);
+  };
+  const joinNames = ids => ids.length ? ids.map(i=>names()[i]).join(' / ') : 'Not available';
+  const bestValue = (arr, mode) => arr.length ? (mode === 'min' ? Math.min(...arr) : Math.max(...arr)) : NaN;
+
+  function syncTopFields() {
+    $('problemTitle').value = data.title;
+    $('objective').value = data.objective;
+    $('unit').value = data.unit;
+    $('alphaRange').value = data.alpha;
+    $('alphaNumber').value = data.alpha;
+  }
+  function renderMatrix() {
+    const sCount = data.states.length, aCount = data.alternatives.length;
+    let html = '<table class="matrix-table"><thead><tr><th>Decision alternative</th>';
+    data.states.forEach((s,j) => {
+      html += `<th><input class="state-name" type="text" aria-label="State ${j+1} name" data-state-name="${j}" value="${esc(s.name)}"></th>`;
+    });
+    html += '</tr></thead><tbody>';
+    data.alternatives.forEach((a,i) => {
+      html += `<tr><td><input class="alt-name" type="text" aria-label="Alternative ${i+1} name" data-alt-name="${i}" value="${esc(a.name)}"></td>`;
+      a.values.forEach((v,j) => { html += `<td><input class="payoff-input" type="number" step="any" aria-label="Payoff for alternative ${i+1}, state ${j+1}" data-payoff="${i},${j}" value="${esc(v)}"></td>`; });
+      html += '</tr>';
+    });
+    html += `<tr class="meta-row"><th class="meta-label">State probability</th>`;
+    data.states.forEach((s,j) => { html += `<td><input type="number" min="0" step="any" aria-label="Probability for state ${j+1}" data-state-prob="${j}" value="${esc(s.prob)}"></td>`; });
+    html += '</tr><tr class="meta-row"><th class="meta-label">Criterion weight</th>';
+    data.states.forEach((s,j) => { html += `<td><input type="number" min="0" step="any" aria-label="Weight for state ${j+1}" data-state-weight="${j}" value="${esc(s.weight)}"></td>`; });
+    html += '</tr></tbody></table>';
+    $('matrixWrap').innerHTML = html;
+    $('dimensionNote').textContent = `${aCount} decision alternative(s) × ${sCount} state(s) of nature. Maximum: ${MAX_DIM} × ${MAX_DIM}.`;
+    $('addAltBtn').disabled = aCount >= MAX_DIM;
+    $('removeAltBtn').disabled = aCount <= 1;
+    $('addStateBtn').disabled = sCount >= MAX_DIM;
+    $('removeStateBtn').disabled = sCount <= 1;
+  }
+
+  function compute() {
+    const m = getMatrix(), nA = m.length, nS = data.states.length;
+    const probRaw = data.states.map(s=>Math.max(0,num(s.prob)));
+    const weightRaw = data.states.map(s=>Math.max(0,num(s.weight)));
+    const probs = normalize(probRaw), weights = normalize(weightRaw);
+    const rowBest = m.map(row=>bestValue(row, isMax()?'max':'min'));
+    const rowWorst = m.map(row=>bestValue(row, isMax()?'min':'max'));
+    const regret = m.map(()=>Array(nS).fill(0));
+    for(let j=0;j<nS;j++) {
+      const col = m.map(row=>row[j]);
+      const ideal = bestValue(col, isMax()?'max':'min');
+      for(let i=0;i<nA;i++) regret[i][j] = isMax() ? ideal - m[i][j] : m[i][j] - ideal;
+    }
+    const maxRegret = regret.map(row=>Math.max(...row));
+    const laplace = m.map(row=>sum(row)/nS);
+    const alpha = Math.min(1,Math.max(0,num(data.alpha)));
+    const hurwicz = m.map((row,i)=>alpha*rowBest[i]+(1-alpha)*rowWorst[i]);
+    const weighted = weights ? m.map(row=>sum(row.map((v,j)=>v*weights[j]))) : m.map(()=>NaN);
+    const emv = probs ? m.map(row=>sum(row.map((v,j)=>v*probs[j]))) : m.map(()=>NaN);
+    const minimaxRegretMode = 'min';
+    const criteria = [
+      {key:'optimistic', label:isMax()?'Maximax':'Minimin', short:isMax()?'Maximax':'Minimin', values:rowBest, mode:isMax()?'max':'min', desc:isMax()?'Highest possible payoff':'Lowest possible cost'},
+      {key:'conservative', label:isMax()?'Maximin':'Minimax cost', short:isMax()?'Maximin':'Minimax cost', values:rowWorst, mode:isMax()?'max':'min', desc:isMax()?'Best worst-case payoff':'Lowest worst-case cost'},
+      {key:'regret', label:'Minimax regret', short:'Minimax regret', values:maxRegret, mode:minimaxRegretMode, desc:'Smallest maximum regret'},
+      {key:'laplace', label:'Laplace (equal likelihood)', short:'Laplace', values:laplace, mode:isMax()?'max':'min', desc:'Best simple average'},
+      {key:'hurwicz', label:`Hurwicz (α = ${alpha.toFixed(2)})`, short:'Hurwicz', values:hurwicz, mode:isMax()?'max':'min', desc:'Best optimism-weighted score'},
+      {key:'weighted', label:'Weighted average', short:'Weighted', values:weighted, mode:isMax()?'max':'min', desc:'Best score using criterion weights'},
+      {key:'emv', label:isMax()?'Expected monetary value (EMV)':'Expected monetary cost', short:isMax()?'EMV':'Expected cost', values:emv, mode:isMax()?'max':'min', desc:'Best probability-weighted outcome'}
+    ];
+    const hasProb = !!probs, hasWeights = !!weights;
+    const piByState = hasProb ? Array.from({length:nS},(_,j)=>{
+      const col = m.map(row=>row[j]);
+      const v = bestValue(col,isMax()?'max':'min');
+      return {j, value:v, alt:winners(col,isMax()?'max':'min')};
+    }) : [];
+    const piValue = hasProb ? sum(piByState.map(x=>x.value*probs[x.j])) : NaN;
+    const bestNoInfo = hasProb ? bestValue(emv,isMax()?'max':'min') : NaN;
+    const evpi = hasProb ? (isMax() ? piValue-bestNoInfo : bestNoInfo-piValue) : NaN;
+    return {m,probs,weights,probRaw,weightRaw,rowBest,rowWorst,regret,maxRegret,laplace,hurwicz,weighted,emv,criteria,piByState,piValue,bestNoInfo,evpi,hasProb,hasWeights};
+  }
+
+  function updateStatuses(c) {
+    const pTotal = sum(c.probRaw), wTotal = sum(c.weightRaw);
+    const pText = c.hasProb ? `Probability input total: ${fmt(pTotal)} → normalized to 100% for calculations` : 'Enter at least one positive probability to calculate EMV and EVPI';
+    const wText = c.hasWeights ? `Criterion-weight input total: ${fmt(wTotal)} → normalized to 100% for calculations` : 'Enter at least one positive criterion weight for the weighted rule';
+    $('probabilityStatus').innerHTML = `<span class="status-pill"><i class="dot ${c.hasProb?'good':'warn'}"></i>${esc(pText)}</span><span class="status-pill"><i class="dot ${c.hasWeights?'good':'warn'}"></i>${esc(wText)}</span>`;
+  }
+  function renderSummary(c) {
+    const modeName = isMax()?'Best expected payoff':'Lowest expected cost';
+    const items = [
+      {label:modeName,value:c.hasProb?money(c.bestNoInfo):'—',foot:c.hasProb?`Without perfect information · ${joinNames(winners(c.emv,isMax()?'max':'min'))}`:'Probability weights required'},
+      {label:isMax()?'Expected value with perfect information':'Expected cost with perfect information',value:c.hasProb?money(c.piValue):'—',foot:'Decision can be tailored to each state'},
+      {label:'EVPI',value:c.hasProb?money(Math.max(0,c.evpi)):'—',foot:'Maximum worth paying for perfect information'},
+      {label:'Hurwicz optimism (α)',value:num(data.alpha).toFixed(2),foot:`${Math.round(num(data.alpha)*100)}% weight on the best outcome`}
+    ];
+    $('summaryCards').innerHTML = items.map(x=>`<div class="metric-card"><div class="metric-label">${esc(x.label)}</div><div class="metric-value">${esc(x.value)}</div><div class="metric-foot">${esc(x.foot)}</div></div>`).join('');
+  }
+  function renderRecommendations(c) {
+    $('recommendationCards').innerHTML = c.criteria.map(cr=>{
+      const canCalc = cr.key==='weighted'?c.hasWeights:(cr.key==='emv'?c.hasProb:true);
+      if(!canCalc) return `<div class="decision-card"><div class="criterion">${esc(cr.label)}</div><div class="winner empty">Enter ${cr.key==='weighted'?'criterion weights':'state probabilities'}</div><div class="explain">${esc(cr.desc)}</div></div>`;
+      const ids = winners(cr.values,cr.mode), v = bestValue(cr.values,cr.mode);
+      return `<div class="decision-card best"><div class="criterion">${esc(cr.label)}</div><div class="winner">${esc(joinNames(ids))}</div><div class="score">Selected score: ${esc(money(v))}</div><div class="explain">${esc(cr.desc)}</div><span class="winner-badge">Recommended by this rule</span></div>`;
+    }).join('');
+  }
+  function renderScoreTable(c) {
+    const headers = ['Alternative',...c.criteria.map(cr=>cr.short)];
+    let html = `<table class="result-table"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>`;
+    data.alternatives.forEach((a,i)=>{
+      html += `<tr><td><strong>${esc(names()[i])}</strong></td>`;
+      c.criteria.forEach(cr=>{
+        const valid = cr.key==='weighted'?c.hasWeights:(cr.key==='emv'?c.hasProb:true);
+        const win = valid && winners(cr.values,cr.mode).includes(i);
+        html += `<td class="${win?'best-cell':''}">${valid?esc(money(cr.values[i])):'—'}${win?' ✓':''}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    $('scoreTableWrap').innerHTML = html;
+  }
+  function renderRegret(c) {
+    let html = '<table class="regret-table"><thead><tr><th>Alternative</th>';
+    stateNames().forEach(s=>html+=`<th>${esc(s)}</th>`);
+    html += '<th>Maximum regret</th></tr></thead><tbody>';
+    c.regret.forEach((row,i)=>{
+      const win = winners(c.maxRegret,'min').includes(i);
+      html += `<tr><td><strong>${esc(names()[i])}</strong></td>`;
+      row.forEach(v=>html+=`<td>${esc(money(v))}</td>`);
+      html += `<td class="${win?'best-cell':''}">${esc(money(c.maxRegret[i]))}${win?' ✓':''}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    $('regretTableWrap').innerHTML = html;
+  }
+  function renderPerfectInfo(c) {
+    if(!c.hasProb) {
+      $('piTableWrap').innerHTML = '<div class="empty" style="padding:18px">Enter positive state probabilities to calculate the value of perfect information.</div>';
+      $('piCards').innerHTML = '';
+      $('piInterpretation').innerHTML = '<h3>Interpretation</h3><p>Once probabilities are entered, this section calculates the expected value under perfect information and the maximum economically justified price for a perfect forecast.</p>';
+      return;
+    }
+    let html = '<table class="pi-table"><thead><tr><th>State of nature</th><th>Probability</th><th>Best alternative with perfect information</th><th>Best payoff / lowest cost</th></tr></thead><tbody>';
+    c.piByState.forEach(x=>{
+      html += `<tr><td>${esc(stateNames()[x.j])}</td><td>${esc(fmt(c.probs[x.j]*100))}%</td><td>${esc(joinNames(x.alt))}</td><td>${esc(money(x.value))}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    $('piTableWrap').innerHTML = html;
+    const cards = [
+      {label:isMax()?'Best EMV without PI':'Best expected cost without PI',value:money(c.bestNoInfo)},
+      {label:isMax()?'Expected value with PI':'Expected cost with PI',value:money(c.piValue)},
+      {label:'EVPI',value:money(Math.max(0,c.evpi))},
+      {label:'Probability sum used',value:`${fmt(sum(c.probs)*100)}%`}
+    ];
+    $('piCards').innerHTML = cards.map(x=>`<div class="metric-card"><div class="metric-label">${esc(x.label)}</div><div class="metric-value" style="font-size:18px">${esc(x.value)}</div></div>`).join('');
+    const evpi = Math.max(0,c.evpi);
+    const msg = isMax()
+      ? `With perfect information, the decision-maker would choose the best alternative separately for each state. The expected payoff would be ${money(c.piValue)}, compared with ${money(c.bestNoInfo)} using the best single alternative before the state is known. Therefore, perfect information is worth at most ${money(evpi)}.`
+      : `With perfect information, the decision-maker would choose the lowest-cost alternative separately for each state. Expected cost would be ${money(c.piValue)}, compared with ${money(c.bestNoInfo)} using one alternative before the state is known. The expected cost saving—and maximum value of perfect information—is ${money(evpi)}.`;
+    $('piInterpretation').innerHTML = `<h3>What does this mean?</h3><p>${esc(msg)}</p>`;
+  }
+  function renderAllResults() {
+    const c = compute();
+    updateStatuses(c); renderSummary(c); renderRecommendations(c); renderScoreTable(c); renderRegret(c); renderPerfectInfo(c);
+    $('objectiveNote').textContent = isMax()
+      ? 'For a payoff or profit problem, higher values are preferred. Regret is measured as the shortfall from the best payoff in each state.'
+      : 'For a cost problem, lower values are preferred. The program reverses the decision rules appropriately; regret is measured as the excess cost over the lowest-cost alternative in each state.';
+  }
+  function renderAll() { syncTopFields(); renderMatrix(); renderAllResults(); }
+
+  function addAlternative() {
+    if(data.alternatives.length>=MAX_DIM) return;
+    const idx=data.alternatives.length+1;
+    data.alternatives.push({name:`Alternative ${idx}`,values:data.states.map(()=>0)});
+    renderMatrix(); renderAllResults();
+  }
+  function removeAlternative() {
+    if(data.alternatives.length<=1) return;
+    data.alternatives.pop(); renderMatrix(); renderAllResults();
+  }
+  function addState() {
+    if(data.states.length>=MAX_DIM) return;
+    const idx=data.states.length+1, n=data.states.length;
+    const oldProbTotal=sum(data.states.map(s=>Math.max(0,num(s.prob))));
+    const oldWeightTotal=sum(data.states.map(s=>Math.max(0,num(s.weight))));
+    const p=oldProbTotal>0?oldProbTotal/(n+1):1/(n+1);
+    const w=oldWeightTotal>0?oldWeightTotal/(n+1):1/(n+1);
+    data.states.push({name:`State ${idx}`,prob:p,weight:w});
+    // Preserve each input total while assigning the new state an equal share.
+    if(n>0) data.states.slice(0,n).forEach(s=>{s.prob=num(s.prob)*n/(n+1);s.weight=num(s.weight)*n/(n+1);});
+    data.alternatives.forEach(a=>a.values.push(0));
+    renderMatrix(); renderAllResults();
+  }
+  function removeState() {
+    if(data.states.length<=1) return;
+    data.states.pop(); data.alternatives.forEach(a=>a.values.pop());
+    renderMatrix(); renderAllResults();
+  }
+
+  $('matrixWrap').addEventListener('input', e=>{
+    const t=e.target;
+    if(t.dataset.altName!==undefined) data.alternatives[+t.dataset.altName].name=t.value;
+    else if(t.dataset.stateName!==undefined) data.states[+t.dataset.stateName].name=t.value;
+    else if(t.dataset.payoff!==undefined) { const [i,j]=t.dataset.payoff.split(',').map(Number); data.alternatives[i].values[j]=t.value===''?0:num(t.value); }
+    else if(t.dataset.stateProb!==undefined) data.states[+t.dataset.stateProb].prob=t.value===''?0:num(t.value);
+    else if(t.dataset.stateWeight!==undefined) data.states[+t.dataset.stateWeight].weight=t.value===''?0:num(t.value);
+    renderAllResults();
+  });
+  $('addAltBtn').addEventListener('click',addAlternative);
+  $('removeAltBtn').addEventListener('click',removeAlternative);
+  $('addStateBtn').addEventListener('click',addState);
+  $('removeStateBtn').addEventListener('click',removeState);
+  $('problemTitle').addEventListener('input',e=>{data.title=e.target.value;document.title=`${data.title || 'Decision Theory Lab'} | Decision Theory Lab`;});
+  $('objective').addEventListener('change',e=>{data.objective=e.target.value;renderAllResults();});
+  $('unit').addEventListener('input',()=>renderAllResults());
+  $('alphaRange').addEventListener('input',e=>{data.alpha=num(e.target.value);$('alphaNumber').value=data.alpha;renderAllResults();});
+  $('alphaNumber').addEventListener('input',e=>{data.alpha=Math.min(1,Math.max(0,num(e.target.value)));$('alphaRange').value=data.alpha;renderAllResults();});
+  $('resetBtn').addEventListener('click',()=>{if(confirm('Restore the original Bonds–Stocks–MFs investment example? Your current edits will be replaced.')){data=defaultScenario();renderAll();}});
+  $('printBtn').addEventListener('click',()=>window.print());
+  $('exportJsonBtn').addEventListener('click',()=>{
+    const payload={...data,title:$('problemTitle').value,objective:objective(),unit:unit(),alpha:num(data.alpha)};
+    downloadFile(`${safeFileName(payload.title)}.json`,JSON.stringify(payload,null,2),'application/json');
+  });
+  $('importJsonBtn').addEventListener('click',()=>$('importFile').click());
+  $('importFile').addEventListener('change',async e=>{
+    const file=e.target.files?.[0]; if(!file)return;
+    try{
+      const obj=JSON.parse(await file.text());
+      if(!obj || !Array.isArray(obj.states) || !Array.isArray(obj.alternatives)) throw new Error('The file must contain states and alternatives arrays.');
+      if(obj.states.length<1 || obj.states.length>MAX_DIM || obj.alternatives.length<1 || obj.alternatives.length>MAX_DIM) throw new Error('The scenario must contain between 1 and 10 states and 1 and 10 alternatives.');
+      const states=obj.states.map((s,i)=>({name:String(s.name??`State ${i+1}`),prob:Math.max(0,num(s.prob)),weight:Math.max(0,num(s.weight))}));
+      const alternatives=obj.alternatives.map((a,i)=>{
+        if(!Array.isArray(a.values) || a.values.length!==states.length) throw new Error(`Alternative ${i+1} must have one payoff for every state.`);
+        return {name:String(a.name??`Alternative ${i+1}`),values:a.values.map(num)};
+      });
+      data={title:String(obj.title??'Imported decision problem'),objective:obj.objective==='min'?'min':'max',unit:String(obj.unit??''),alpha:Math.min(1,Math.max(0,num(obj.alpha??.6))),states,alternatives};
+      renderAll();
+    }catch(err){alert(`Could not import scenario: ${err.message}`);}finally{e.target.value='';}
+  });
+
+  function safeFileName(s){return String(s||'decision-scenario').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'decision-scenario';}
+  function downloadFile(name,content,type){
+    const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  }
+  renderAll();
+})();
+</script>
+</body>
+</html>
