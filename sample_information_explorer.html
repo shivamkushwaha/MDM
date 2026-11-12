@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sample Information Explorer</title>
+<style>
+  :root { --accent: #A5300F; --ink: #222222; --tint: #F3E9E6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: var(--ink); font-family: Georgia, "Times New Roman", serif; line-height: 1.5; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { color: var(--accent); margin: 0 0 4px; font-size: 1.9rem; }
+  h2 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 4px; margin: 38px 0 12px; font-size: 1.35rem; }
+  p { margin: 6px 0 10px; }
+  .note { font-size: 0.93rem; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; margin: 8px 0 12px; }
+  th, td { border: 1px solid #fff; padding: 6px 12px; text-align: right; white-space: nowrap; }
+  th { background: var(--accent); color: #fff; text-align: left; }
+  td { background: var(--tint); }
+  td.name { text-align: left; font-weight: bold; }
+  tr.win td { outline: 2px solid var(--accent); outline-offset: -2px; font-weight: bold; }
+  input[type=text], input[type=number] { font: inherit; color: var(--ink); border: 1px solid var(--accent); background: #fff; padding: 4px 6px; border-radius: 3px; }
+  input[type=number] { width: 84px; text-align: right; }
+  input.nm { width: 130px; font-weight: bold; }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--accent); background: #fff; color: var(--accent); padding: 6px 12px; border-radius: 3px; margin: 2px 4px 2px 0; }
+  button:hover { background: var(--accent); color: #fff; }
+  button.x { padding: 0 7px; margin-left: 4px; }
+  .two { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 26px; align-items: start; }
+  .two .left { position: sticky; top: 8px; }
+  @media (max-width: 860px) { .two { grid-template-columns: 1fr; } .two .left { position: static; } }
+  .sl { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "lab val" "rng rng"; gap: 2px 10px; align-items: end; margin: 10px 0; }
+  .sl label { grid-area: lab; } .sl b { grid-area: val; }
+  .sl input[type=range] { grid-area: rng; width: 100%; accent-color: var(--accent); }
+  .sl b { color: var(--accent); font-size: 1.15rem; }
+  .tiles { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+  .tile { background: var(--tint); border-left: 5px solid var(--accent); padding: 8px 14px; min-width: 150px; }
+  .tile span { display: block; font-size: 0.85rem; }
+  .tile b { font-size: 1.4rem; color: var(--accent); }
+  .result { background: var(--tint); border-left: 5px solid var(--accent); padding: 8px 14px; margin: 8px 0; }
+  .result b { color: var(--accent); }
+  .bar { display: flex; height: 30px; margin: 3px 0 10px; border: 1px solid var(--ink); max-width: 900px; }
+  .bar div { display: flex; align-items: center; justify-content: center; font-size: 0.8rem; overflow: hidden; white-space: nowrap; }
+  .bar .pos { background: var(--accent); color: #fff; }
+  .bar .neg { background: var(--tint); }
+  svg { width: 100%; max-width: 900px; height: auto; display: block; }
+  svg text { font-family: Georgia, serif; fill: var(--ink); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Sample Information Explorer</h1>
+  <p>Should a decision maker pay for imperfect information such as a consultant report, a survey or a forecast? Move the sliders to see how the reliability of the information changes the revised probabilities, the decision tree and the expected value of sample information (EVSI).</p>
+
+  <h2>1. The Decision Problem</h2>
+  <div class="scroll"><table id="editor"></table></div>
+  <button id="addAlt">Add alternative</button><button id="reset">Load sample</button>
+  <p class="note">An alternative with the same payoff in both states is treated as a sure payoff.</p>
+
+  <h2>2. The Information Source and the Decision Tree</h2>
+  <div class="two">
+    <div class="left">
+      <div class="sl"><label id="lbPrior"></label><input type="range" id="prior" min="0" max="1" step="0.01"><b id="vPrior"></b></div>
+      <div class="sl"><label id="lbL1"></label><input type="range" id="l1" min="0" max="1" step="0.01"><b id="vL1"></b></div>
+      <div class="sl"><label id="lbL2"></label><input type="range" id="l2" min="0" max="1" step="0.01"><b id="vL2"></b></div>
+      <div class="sl"><label>Fee for the information</label><input type="range" id="fee" min="0" max="30" step="0.1"><b id="vFee"></b></div>
+      <div class="result" id="mini"></div>
+      <p class="note">The two likelihoods describe the track record of the source: how often it gave a positive report in past cases of each kind. A perfect source would have 1 and 0. A source with equal likelihoods tells us nothing.</p>
+    </div>
+    <div>
+      <div class="scroll"><div id="tree" style="min-width:560px"></div></div>
+      <p class="note">Squares are decisions and circles are chance events. The number beside each node is its expected value. Thick coloured branches are optimal; dashed branches are rejected. The fee is deducted at the root.</p>
+    </div>
+  </div>
+
+  <h2>3. Revising Probabilities: Bayes' Rule with 1,000 Past Cases</h2>
+  <div id="freq"></div>
+  <div class="scroll" id="bayes"></div>
+
+  <h2>4. Value of the Information</h2>
+  <div class="scroll" id="decisions"></div>
+  <div class="tiles" id="tiles"></div>
+  <div id="verdict"></div>
+
+  <h2>5. How Reliable Must the Source Be?</h2>
+  <p id="chartNote" class="note"></p>
+  <div id="chart"></div>
+
+  <h2>6. Simulation: Does the Information Pay Off in the Long Run?</h2>
+  <p>Each simulated case draws a state and a report from the probabilities above. The decision maker with the report follows the optimal strategy from the tree; the decision maker without it takes the best prior decision. The gain is the difference in payoff before the fee.</p>
+  <button id="sim1">Simulate 1 case</button><button id="sim1000">Simulate 1,000 cases</button><button id="simReset">Reset simulation</button>
+  <div id="simText"></div>
+  <div id="simChart"></div>
+</main>
+
+<script>
+(function () {
+  var SAMPLE = { s: ["Growing", "Declining"], alts: [["Stocks", 70, -13], ["Mutual Funds", 53, -5], ["Bonds", 20, 20]], prior: 0.4, l1: 0.65, l2: 0.30, fee: 7.2 };
+  var S, sim;
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function f(x, d) { var k = Math.pow(10, d == null ? 2 : d), r = Math.round(x * k) / k; return (r === 0 ? 0 : r).toString(); }
+  function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+  function load() { S = JSON.parse(JSON.stringify(SAMPLE)); resetSim(); }
+  function resetSim() { sim = { n: 0, sum: 0, hist: [], last: "" }; }
+
+  /* ---------- model ---------- */
+  function evs(p) { return S.alts.map(function (a) { return p * a[1] + (1 - p) * a[2]; }); }
+  function bestIdx(p) { var e = evs(p), b = 0; e.forEach(function (v, i) { if (v > e[b] + 1e-12) b = i; }); return b; }
+  function best(p) { return evs(p)[bestIdx(p)]; }
+  function model(prior, l1, l2) {
+    var pPos = prior * l1 + (1 - prior) * l2, pNeg = 1 - pPos;
+    var qPos = pPos > 1e-12 ? prior * l1 / pPos : prior, qNeg = pNeg > 1e-12 ? prior * (1 - l1) / pNeg : prior;
+    var ev0 = best(prior), evw = pPos * best(qPos) + pNeg * best(qNeg);
+    var mA = Math.max.apply(null, S.alts.map(function (a) { return a[1]; })), mB = Math.max.apply(null, S.alts.map(function (a) { return a[2]; }));
+    return { pPos: pPos, pNeg: pNeg, qPos: qPos, qNeg: qNeg, ev0: ev0, evw: evw, evsi: Math.max(0, evw - ev0), evpi: prior * mA + (1 - prior) * mB - ev0 };
+  }
+
+  /* ---------- editor ---------- */
+  function renderEditor() {
+    var h = '<tr><th>Alternative</th><th><input class="nm" type="text" data-k="s" data-j="0" value="' + esc(S.s[0]) + '"></th><th><input class="nm" type="text" data-k="s" data-j="1" value="' + esc(S.s[1]) + '"></th></tr>';
+    S.alts.forEach(function (a, i) {
+      h += '<tr><td class="name"><input class="nm" type="text" data-k="n" data-i="' + i + '" value="' + esc(a[0]) + '">' +
+        (S.alts.length > 2 ? '<button class="x" data-del="' + i + '" title="Remove">×</button>' : "") + "</td>" +
+        '<td><input type="number" step="any" data-k="p" data-i="' + i + '" data-j="1" value="' + a[1] + '"></td>' +
+        '<td><input type="number" step="any" data-k="p" data-i="' + i + '" data-j="2" value="' + a[2] + '"></td></tr>';
+    });
+    $("editor").innerHTML = h;
+    $("prior").value = S.prior; $("l1").value = S.l1; $("l2").value = S.l2; $("fee").value = S.fee;
+  }
+  $("editor").addEventListener("input", function (e) {
+    var d = e.target.dataset;
+    if (d.k === "s") S.s[+d.j] = e.target.value;
+    else if (d.k === "n") S.alts[+d.i][0] = e.target.value;
+    else if (d.k === "p") S.alts[+d.i][+d.j] = num(e.target.value);
+    resetSim(); render();
+  });
+  $("editor").addEventListener("click", function (e) {
+    if (e.target.dataset.del == null) return;
+    S.alts.splice(+e.target.dataset.del, 1); resetSim(); renderEditor(); render();
+  });
+  $("addAlt").onclick = function () { if (S.alts.length < 6) { S.alts.push(["Alternative " + (S.alts.length + 1), 0, 0]); resetSim(); renderEditor(); render(); } };
+  $("reset").onclick = function () { load(); renderEditor(); render(); };
+  ["prior", "l1", "l2", "fee"].forEach(function (id) {
+    $(id).addEventListener("input", function () { S[id] = +this.value; resetSim(); render(); });
+  });
+
+  /* ---------- tree ---------- */
+  function buildTree(M) {
+    function dec(p) {
+      var e = evs(p), b = bestIdx(p);
+      return { t: "D", ev: e[b], kids: S.alts.map(function (a, i) {
+        var child = a[1] === a[2] ? { t: "T", ev: a[1], kids: [] } :
+          { t: "C", ev: e[i], kids: [{ lab: S.s[0] + " (" + f(p, 3) + ")", node: { t: "T", ev: a[1], kids: [] } }, { lab: S.s[1] + " (" + f(1 - p, 3) + ")", node: { t: "T", ev: a[2], kids: [] } }] };
+        return { lab: a[0], node: child, opt: i === b };
+      }) };
+    }
+    var buy = M.evw - S.fee > M.ev0 + 1e-9;
+    var c = { t: "C", ev: M.evw, kids: [{ lab: "Positive (" + f(M.pPos, 3) + ")", node: dec(M.qPos) }, { lab: "Negative (" + f(M.pNeg, 3) + ")", node: dec(M.qNeg) }] };
+    return { t: "D", ev: Math.max(M.ev0, M.evw - S.fee), kids: [{ lab: "Do not buy", node: dec(S.prior), opt: !buy }, { lab: "Buy (fee " + f(S.fee) + ")", node: c, opt: buy }] };
+  }
+  function drawTree(root) {
+    var y = 22, DX = 150, out = "";
+    function cut(t) { return t.length > 23 ? t.slice(0, 22) + "…" : t; }
+    (function place(n, d) {
+      n.x = 62 + d * DX;
+      if (!n.kids.length) { n.y = y; y += 36; }
+      else { n.kids.forEach(function (k) { place(k.node, d + 1); }); n.y = n.kids.reduce(function (s, k) { return s + k.node.y; }, 0) / n.kids.length; }
+    })(root, 0);
+    (function draw(n) {
+      n.kids.forEach(function (k) {
+        var c = k.node, st = k.opt == null ? 'stroke="#222" stroke-width="1.2"' : (k.opt ? 'stroke="#A5300F" stroke-width="2.6"' : 'stroke="#999" stroke-width="1.2" stroke-dasharray="4 3"');
+        out += '<path d="M' + n.x + " " + n.y + " L" + (n.x + 22) + " " + c.y + " L" + c.x + " " + c.y + '" fill="none" ' + st + "/>";
+        out += '<text x="' + ((n.x + 22 + c.x) / 2) + '" y="' + (c.y - 5) + '" text-anchor="middle" font-size="11">' + esc(cut(k.lab)) + "</text>";
+        draw(c);
+      });
+      if (n.t === "T") out += '<circle cx="' + n.x + '" cy="' + n.y + '" r="2.5" fill="#222"/><text x="' + (n.x + 7) + '" y="' + (n.y + 4) + '" font-size="12" font-weight="bold">' + f(n.ev) + "</text>";
+      else {
+        out += n.t === "D" ? '<rect x="' + (n.x - 6) + '" y="' + (n.y - 6) + '" width="12" height="12" fill="#fff" stroke="#222"/>' : '<circle cx="' + n.x + '" cy="' + n.y + '" r="7" fill="#fff" stroke="#222"/>';
+        out += '<text x="' + (n.x - 9) + '" y="' + (n.y + 16) + '" text-anchor="end" font-size="11" font-weight="bold" style="fill:#A5300F">' + f(n.ev) + "</text>";
+      }
+    })(root);
+    return '<svg viewBox="0 0 735 ' + (y - 8) + '">' + out + "</svg>";
+  }
+
+  /* ---------- charts ---------- */
+  function lineChart(series, hlines, xmax, ymax, marker, xlab) {
+    var W = 700, H = 280, L = 50, R = 120, T = 14, B = 34, o = "";
+    function X(x) { return L + (W - L - R) * x / xmax; } function Y(v) { return H - B - (H - T - B) * Math.max(0, Math.min(ymax, v)) / ymax; }
+    o += '<path d="M' + L + " " + T + " V" + (H - B) + " H" + (W - R) + '" fill="none" stroke="#222"/>';
+    o += '<text x="' + (L - 6) + '" y="' + (Y(0) + 4) + '" text-anchor="end" font-size="11">0</text><text x="' + (L - 6) + '" y="' + (Y(ymax) + 4) + '" text-anchor="end" font-size="11">' + f(ymax, 1) + "</text>";
+    o += '<text x="' + X(0) + '" y="' + (H - B + 14) + '" text-anchor="middle" font-size="11">0</text><text x="' + X(xmax) + '" y="' + (H - B + 14) + '" text-anchor="middle" font-size="11">' + xmax + '</text><text x="' + X(xmax / 2) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="12">' + xlab + "</text>";
+    var labs = hlines.map(function (h) { return { h: h, y: Y(h.v) + 4 }; }).sort(function (a, b) { return a.y - b.y; });
+    for (var i = 1; i < labs.length; i++) if (labs[i].y - labs[i - 1].y < 15) { var mid = (labs[i].y + labs[i - 1].y) / 2; labs[i - 1].y = mid - 7.5; labs[i].y = mid + 7.5; }
+    labs.forEach(function (l) {
+      var h = l.h;
+      o += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(h.v) + '" y2="' + Y(h.v) + '" stroke="#222" stroke-dasharray="' + h.dash + '"/><text x="' + (W - R + 5) + '" y="' + l.y + '" font-size="11">' + h.lab + "</text>";
+    });
+    series.forEach(function (s) {
+      o += '<polyline fill="none" stroke="#A5300F" stroke-width="2.2" points="' + s.map(function (p) { return X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1); }).join(" ") + '"/>';
+    });
+    if (marker) o += '<circle cx="' + X(marker[0]) + '" cy="' + Y(marker[1]) + '" r="5" fill="#A5300F"/>';
+    return '<svg viewBox="0 0 ' + W + " " + H + '">' + o + "</svg>";
+  }
+
+  /* ---------- render ---------- */
+  function table(head, rows, win) {
+    return "<table><tr>" + head.map(function (h) { return "<th>" + esc(h) + "</th>"; }).join("") + "</tr>" + rows.map(function (r, i) {
+      return '<tr class="' + (win === i ? "win" : "") + '">' + r.map(function (c, k) { return "<td" + (k === 0 ? ' class="name"' : "") + ">" + esc(c) + "</td>"; }).join("") + "</tr>";
+    }).join("") + "</table>";
+  }
+  function render() {
+    var M = model(S.prior, S.l1, S.l2), s1 = esc(S.s[0]), s2 = esc(S.s[1]);
+    $("lbPrior").innerHTML = "Prior probability of " + s1; $("vPrior").textContent = f(S.prior);
+    $("lbL1").innerHTML = "P(positive report | " + s1 + ")"; $("vL1").textContent = f(S.l1);
+    $("lbL2").innerHTML = "P(positive report | " + s2 + ")"; $("vL2").textContent = f(S.l2);
+    $("vFee").textContent = f(S.fee);
+
+    /* natural frequencies */
+    var n1 = 1000 * S.prior, n2 = 1000 - n1, a = n1 * S.l1, b = n1 - a, c = n2 * S.l2, d = n2 - c;
+    function bar(pos, neg, tot) {
+      return '<div class="bar" style="width:' + Math.max(2, tot / 10) + '%"><div class="pos" style="width:' + (tot ? 100 * pos / tot : 0) + '%">' + f(pos, 0) + ' positive</div><div class="neg" style="width:' + (tot ? 100 * neg / tot : 0) + '%">' + f(neg, 0) + " negative</div></div>";
+    }
+    $("freq").innerHTML = "<p>Imagine 1,000 past cases. The bar lengths show how many were of each kind, and the colours show the report each received.</p>" +
+      "<b>" + s1 + ": " + f(n1, 0) + " cases</b>" + bar(a, b, n1) + "<b>" + s2 + ": " + f(n2, 0) + " cases</b>" + bar(c, d, n2) +
+      '<div class="result">Of the ' + f(a + c, 0) + " positive reports, " + f(a, 0) + " came from " + s1 + " cases, so P(" + s1 + " | positive) = <b>" + f(M.qPos, 4) + "</b>. " +
+      "Of the " + f(b + d, 0) + " negative reports, " + f(b, 0) + " came from " + s1 + " cases, so P(" + s1 + " | negative) = <b>" + f(M.qNeg, 4) + "</b>.</div>";
+    $("bayes").innerHTML = table(["Report", "State", "Prior", "Likelihood", "Joint", "Posterior"], [
+      ["Positive", S.s[0], f(S.prior), f(S.l1), f(S.prior * S.l1, 4), f(M.qPos, 4)], ["Positive", S.s[1], f(1 - S.prior), f(S.l2), f((1 - S.prior) * S.l2, 4), f(1 - M.qPos, 4)],
+      ["Negative", S.s[0], f(S.prior), f(1 - S.l1), f(S.prior * (1 - S.l1), 4), f(M.qNeg, 4)], ["Negative", S.s[1], f(1 - S.prior), f(1 - S.l2), f((1 - S.prior) * (1 - S.l2), 4), f(1 - M.qNeg, 4)]]) +
+      '<p class="note">P(positive) = ' + f(M.pPos, 4) + " and P(negative) = " + f(M.pNeg, 4) + ".</p>";
+
+    /* decisions */
+    var sit = [["No information", 1, S.prior], ["Positive report", M.pPos, M.qPos], ["Negative report", M.pNeg, M.qNeg]];
+    $("decisions").innerHTML = table(["Situation", "Probability", "P(" + S.s[0] + ")"].concat(S.alts.map(function (x) { return "EMV: " + x[0]; }), ["Best choice", "Best EMV"]),
+      sit.map(function (r) { var e = evs(r[2]), bi = bestIdx(r[2]); return [r[0], f(r[1], 4), f(r[2], 4)].concat(e.map(function (v) { return f(v); }), [S.alts[bi][0], f(e[bi])]); }));
+    var net = M.evsi - S.fee, eff = M.evpi > 1e-9 ? 100 * M.evsi / M.evpi : 0;
+    $("tiles").innerHTML = [["EV without sample information", f(M.ev0)], ["EV with sample information", f(M.evw)], ["EVSI", f(M.evsi)], ["EVPI", f(M.evpi)], ["Efficiency (EVSI / EVPI)", f(eff, 1) + "%"], ["Fee", f(S.fee)]]
+      .map(function (t) { return '<div class="tile"><span>' + t[0] + "</span><b>" + t[1] + "</b></div>"; }).join("");
+    var changes = bestIdx(M.qPos) !== bestIdx(S.prior) || bestIdx(M.qNeg) !== bestIdx(S.prior);
+    $("verdict").innerHTML = '<div class="result">EVSI = ' + f(M.evw) + " − " + f(M.ev0) + " = <b>" + f(M.evsi) + "</b>. " +
+      (!changes ? "Neither report changes the decision, so the information has <b>no value</b> at any price."
+        : (net > 1e-9 ? "The fee of " + f(S.fee) + " is less than EVSI, so the information is <b>worth buying</b> (expected net gain " + f(net) + ")."
+          : "The fee of " + f(S.fee) + " is not less than EVSI, so the information is <b>not worth buying</b> (expected net loss " + f(-net) + ").")) + "</div>";
+
+    $("tree").innerHTML = drawTree(buildTree(M));
+    $("mini").innerHTML = "EVSI = <b>" + f(M.evsi) + "</b>, fee = <b>" + f(S.fee) + "</b>: " + (changes && net > 1e-9 ? "buy" : "do not buy") + ".";
+
+    /* reliability chart */
+    var pts = [], i; for (i = 0; i <= 100; i++) pts.push([i / 100, model(S.prior, i / 100, S.l2).evsi]);
+    var ymax = Math.max(M.evpi, S.fee, 1e-6) * 1.15;
+    $("chartNote").innerHTML = "EVSI as P(positive | " + s1 + ") moves from 0 to 1, holding P(positive | " + s2 + ") at " + f(S.l2) + ". EVSI is zero where the two likelihoods are equal, can never exceed EVPI, and the information is worth buying only where the curve lies above the fee line.";
+    $("chart").innerHTML = lineChart([pts], [{ v: M.evpi, lab: "EVPI = " + f(M.evpi), dash: "6 4" }, { v: S.fee, lab: "Fee = " + f(S.fee), dash: "2 3" }], 1, ymax, [S.l1, M.evsi], "P(positive | " + s1 + ")");
+    renderSim(M);
+  }
+
+  /* ---------- simulation ---------- */
+  function runSim(k) {
+    var M = model(S.prior, S.l1, S.l2), b0 = bestIdx(S.prior), bp = bestIdx(M.qPos), bn = bestIdx(M.qNeg), i;
+    for (i = 0; i < k; i++) {
+      var st = Math.random() < S.prior ? 1 : 2, pos = Math.random() < (st === 1 ? S.l1 : S.l2), bi = pos ? bp : bn;
+      var w = S.alts[bi][st], wo = S.alts[b0][st];
+      sim.n++; sim.sum += w - wo; sim.hist.push(sim.sum / sim.n);
+      sim.last = "Case " + sim.n + ": the state was " + esc(S.s[st - 1]) + " and the report was " + (pos ? "positive" : "negative") + ". With the report: " + esc(S.alts[bi][0]) + " earned " + f(w) + ". Without it: " + esc(S.alts[b0][0]) + " earned " + f(wo) + ". Gain " + f(w - wo) + ".";
+    }
+    renderSim(M);
+  }
+  function renderSim(M) {
+    if (!sim.n) { $("simText").innerHTML = '<p class="note">No cases simulated yet.</p>'; $("simChart").innerHTML = ""; return; }
+    var avg = sim.sum / sim.n, step = Math.max(1, Math.floor(sim.hist.length / 600)), pts = [], i;
+    for (i = 0; i < sim.hist.length; i += step) pts.push([i + 1, sim.hist[i]]);
+    pts.push([sim.n, avg]);
+    $("simText").innerHTML = "<p>" + sim.last + '</p><div class="result">After <b>' + sim.n + "</b> cases the average gain from the information is <b>" + f(avg) + "</b>. Theory says EVSI = <b>" + f(M.evsi) + "</b> and the fee is " + f(S.fee) + ".</div>";
+    var ymax = Math.max(M.evsi, S.fee, avg, Math.max.apply(null, pts.map(function (p) { return p[1]; })), 1e-6) * 1.2;
+    $("simChart").innerHTML = lineChart([pts], [{ v: M.evsi, lab: "EVSI = " + f(M.evsi), dash: "6 4" }, { v: S.fee, lab: "Fee = " + f(S.fee), dash: "2 3" }], Math.max(sim.n, 10), ymax, null, "Number of simulated cases (running average gain)");
+  }
+  $("sim1").onclick = function () { runSim(1); };
+  $("sim1000").onclick = function () { runSim(1000); };
+  $("simReset").onclick = function () { resetSim(); render(); };
+
+  load(); renderEditor(); render();
+})();
+</script>
+</body>
+</html>
